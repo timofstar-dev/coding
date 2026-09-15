@@ -6,10 +6,22 @@
     margin: 0 4px;
     opacity: 0.6;
 }
+.break-point::before {
+    content: '/';
+}
 
 .playing {
     background-color: #eef2ff; /* indigo-50 */
     border-left: 4px solid #4f46e5;
+}
+
+.karaoke-highlight {
+    background-color: #fef08a; /* yellow-200 */
+    color: #b45309; /* amber-700 */
+    border-radius: 2px;
+    padding: 0 2px;
+    margin: 0 -2px;
+    transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
 }
 
 .verse-text {

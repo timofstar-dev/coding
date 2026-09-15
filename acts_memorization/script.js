@@ -108,14 +108,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatTextWithBreaks(text) {
         // Insert a reading break (/) after commas, semicolons, colons
-        let formatted = text.replace(/([,;:]) /g, '$1 <span class="break-point">/</span> ');
+        let formatted = text.replace(/([,;:])(\s)/g, '$1<span class="break-point"></span>$2');
         
         // Insert before certain conjunctions and prepositions for long phrases
         // Use word boundary \b
         const breakWords = ['and', 'but', 'so', 'because', 'who', 'which', 'that', 'for', 'if', 'when'];
-        const breakRegex = new RegExp(`\\s(${breakWords.join('|')})\\b`, 'gi');
+        const breakRegex = new RegExp(`(\\s)(${breakWords.join('|')})\\b`, 'gi');
         
-        formatted = formatted.replace(breakRegex, ' <span class="break-point">/</span> $1');
+        formatted = formatted.replace(breakRegex, '$1<span class="break-point"></span>$2');
         
         return formatted;
     }
@@ -162,8 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 voiceSelect.appendChild(option);
             });
             
-            // Try to set Samantha as the fixed default voice, fallback to others if not found
-            const defaultVoiceNames = ['Samantha', 'Google US English', 'Alex', 'Daniel'];
+            // Try to set a local voice first to avoid network errors on file:// protocol
+            const defaultVoiceNames = ['Microsoft Zira', 'Microsoft David', 'Microsoft Mark', 'Samantha', 'Google US English', 'Alex', 'Daniel'];
             for (const name of defaultVoiceNames) {
                 const index = englishVoices.findIndex(v => v.name.includes(name));
                 if (index !== -1) {
@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             playBtn.addEventListener('click', () => {
                 const speed = parseFloat(speedSelect.value);
-                playVerse(verseId, spokenText, speed, playBtn, pauseBtn);
+                playVerse(verseId, verseObj.englishText, spokenText, speed, playBtn, pauseBtn);
             });
 
             pauseBtn.addEventListener('click', () => {
@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function playVerse(verseId, text, speed, playBtn, pauseBtn) {
+    function playVerse(verseId, originalText, spokenText, speed, playBtn, pauseBtn) {
         if (playingVerseId === verseId && window.speechSynthesis.paused) {
             window.speechSynthesis.resume();
             pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
@@ -361,13 +361,15 @@ document.addEventListener('DOMContentLoaded', () => {
         stopSpeech();
         playingVerseId = verseId;
         const verseEl = document.getElementById(verseId);
+        const verseTextEl = verseEl.querySelector('.verse-text');
+        const defaultHTML = formatTextWithBreaks(originalText);
         
         verseEl.classList.add('playing');
         playBtn.classList.add('hidden');
         pauseBtn.classList.remove('hidden');
         pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
 
-        const utterance = new SpeechSynthesisUtterance(text);
+        const utterance = new SpeechSynthesisUtterance(spokenText);
         utterance.lang = 'en-US';
         
         const selectedVoiceURI = voiceSelect?.value;
@@ -378,23 +380,98 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // The user requested that the old 0.7x speed becomes the new baseline (1.0x in UI).
         const BASELINE_SPEED = 0.7;
         utterance.rate = speed * BASELINE_SPEED;
         
         let hasFiredEnd = false;
 
+        utterance.onboundary = (event) => {
+            console.log('Boundary event:', event.name, event.charIndex, event.charLength, spokenText.substring(event.charIndex, event.charIndex + (event.charLength || 10)));
+            if (event.name !== 'word') return;
+            
+            let charLen = event.charLength;
+            if (!charLen) {
+                // Find next space or punctuation
+                let remaining = spokenText.substring(event.charIndex);
+                let match = remaining.match(/^[^\s,;:.?!]+/);
+                charLen = match ? match[0].length : 1;
+                console.log('Guessed charLen:', charLen);
+            }
+            
+            let sIdx = 0;
+            let oIdx = 0;
+            while (sIdx < event.charIndex && sIdx < spokenText.length && oIdx < originalText.length) {
+                if (spokenText[sIdx] === originalText[oIdx]) {
+                    sIdx++;
+                    oIdx++;
+                } else {
+                    if (spokenText[sIdx] === ',') sIdx++;
+                    else if (spokenText[sIdx] === ' ' && originalText[oIdx] !== ' ') sIdx++;
+                    else { sIdx++; oIdx++; }
+                }
+            }
+            const startIdx = oIdx;
+            
+            let e_sIdx = sIdx;
+            let e_oIdx = oIdx;
+            const targetSIdx = event.charIndex + charLen;
+            while (e_sIdx < targetSIdx && e_sIdx < spokenText.length && e_oIdx < originalText.length) {
+                if (spokenText[e_sIdx] === originalText[e_oIdx]) {
+                    e_sIdx++;
+                    e_oIdx++;
+                } else {
+                    if (spokenText[e_sIdx] === ',') e_sIdx++;
+                    else if (spokenText[e_sIdx] === ' ' && originalText[e_oIdx] !== ' ') e_sIdx++;
+                    else { e_sIdx++; e_oIdx++; }
+                }
+            }
+            const endIdx = e_oIdx;
+            
+            let result = '';
+            let textCount = 0;
+            let inTag = false;
+            let startInserted = false;
+            let endInserted = false;
+            
+            for (let i = 0; i < defaultHTML.length; i++) {
+                const char = defaultHTML[i];
+                if (!startInserted && textCount === startIdx && !inTag) {
+                    result += '<span class="karaoke-highlight">';
+                    startInserted = true;
+                }
+                if (!endInserted && textCount === endIdx && !inTag) {
+                    result += '</span>';
+                    endInserted = true;
+                }
+                result += char;
+                if (char === '<') inTag = true;
+                else if (char === '>') inTag = false;
+                else if (!inTag) textCount++;
+            }
+            if (startInserted && !endInserted && textCount === endIdx) {
+                result += '</span>';
+            }
+            
+            if (verseTextEl) {
+                verseTextEl.innerHTML = result;
+                // console.log('Highlighted HTML:', result); // Uncomment to debug HTML output
+            }
+        };
+
         utterance.onend = () => {
             if (hasFiredEnd) return;
             hasFiredEnd = true;
+            if (verseTextEl) verseTextEl.innerHTML = defaultHTML; // reset highlight
             resetVerseUI(verseId, playBtn, pauseBtn);
-            playingVerseId = null;
+            if (playingVerseId === verseId) {
+                playingVerseId = null;
+            }
             
             const loopBtn = verseEl.querySelector('.loop-btn');
             const isLooping = loopBtn.getAttribute('data-loop') === 'true';
 
             if (isLooping) {
-                playVerse(verseId, text, speed, playBtn, pauseBtn);
+                playVerse(verseId, originalText, spokenText, speed, playBtn, pauseBtn);
             } else if (isPlayingSelected) {
                 currentQueueIndex++;
                 playNextInQueue();
@@ -404,9 +481,11 @@ document.addEventListener('DOMContentLoaded', () => {
         utterance.onerror = (e) => {
             if (hasFiredEnd) return;
             hasFiredEnd = true;
-            console.error('Speech synthesis error:', e);
+            console.error('Speech synthesis error:', e.error || e, e.message || '');
             resetVerseUI(verseId, playBtn, pauseBtn);
-            playingVerseId = null;
+            if (playingVerseId === verseId) {
+                playingVerseId = null;
+            }
         };
 
         currentUtterance = utterance;
@@ -435,6 +514,12 @@ document.addEventListener('DOMContentLoaded', () => {
             el.classList.remove('playing', 'paused');
             if (playBtn) playBtn.classList.remove('hidden');
             if (pauseBtn) pauseBtn.classList.add('hidden');
+            const highlightEl = el.querySelector('.karaoke-highlight');
+            if (highlightEl) {
+                const parent = highlightEl.parentNode;
+                while (highlightEl.firstChild) parent.insertBefore(highlightEl.firstChild, highlightEl);
+                parent.removeChild(highlightEl);
+            }
         }
     }
 
