@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사도행전 논술 활동지 생성기</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container no-print">
+        <h1>📖 사도행전 논술 활동지 생성기</h1>
+        <p>선택한 진도와 학년군에 맞는 맞춤형 활동지를 생성합니다.</p>
+        
+        <form id="generatorForm">
+            <div class="form-group">
+                <label for="date">날짜</label>
+                <input type="date" id="date" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="grade">학년군</label>
+                <select id="grade" required>
+                    <option value="12">초등 1~2학년군</option>
+                    <option value="34">초등 3~4학년군</option>
+                    <option value="56">초등 5~6학년군</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>진도 선택 (사도행전)</label>
+                <div class="passage-select">
+                    <select id="chapter" required>
+                        <!-- 1장부터 28장까지 옵션 생성 (JS로 처리) -->
+                    </select> 장
+                    
+                    <select id="startVerse" required>
+                        <!-- 절 선택 옵션 (JS로 처리) -->
+                    </select> 절 ~ 
+                    
+                    <select id="endVerse" required>
+                        <!-- 절 선택 옵션 (JS로 처리) -->
+                    </select> 절
+                </div>
+            </div>
+            
+            <button type="submit" class="btn">활동지 새롭게 생성하기</button>
+        </form>
+
+        <!-- 출제 기록 토글 버튼 -->
+        <div style="margin-top: 25px; text-align: center;">
+            <button type="button" class="btn" onclick="toggleHistory()" style="background-color: #64748b; font-size: 16px;">📂 출제 기록 검색 및 불러오기</button>
+        </div>
+
+        <!-- 출제 기록 영역 (기본 숨김) -->
+        <div id="historySection" class="history-section no-print" style="display: none; margin-top: 15px; border: 1px solid #cbd5e1; padding: 20px; border-radius: 5px; background: #f8fafc;">
+            <h3 style="margin-top:0;">📂 출제 기록 관리</h3>
+            
+            <!-- 검색 필터 -->
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <select id="filterGrade" onchange="renderHistory()" style="flex: 1; padding: 8px;">
+                    <option value="all">모든 학년군</option>
+                    <option value="12">초등 1~2학년군</option>
+                    <option value="34">초등 3~4학년군</option>
+                    <option value="56">초등 5~6학년군</option>
+                </select>
+                <select id="filterDate" onchange="renderHistory()" style="flex: 1; padding: 8px;">
+                    <option value="all">모든 날짜</option>
+                    <!-- JS로 동적 추가 -->
+                </select>
+            </div>
+
+            <ul id="historyList" style="list-style: none; padding: 0;"></ul>
+            <button type="button" class="btn" onclick="clearHistory()" style="background-color: #94a3b8; margin-top: 15px; font-size: 15px;">전체 기록 초기화</button>
+        </div>
+    </div>
+
+    <!-- 생성된 활동지가 표시될 영역 -->
+    <div id="worksheetArea" class="worksheet-container" style="display: none;">
+        <div class="worksheet-header">
+            <h2 id="ws-main-title">사도행전 성경적 세계관 논술 활동지</h2>
+            <div class="worksheet-info">
+                <span>날짜: <span id="ws-date"></span></span>
+                <span>이름: ________________</span>
+            </div>
+            <div class="worksheet-passage">
+                <strong>오늘의 진도: 사도행전 <span id="ws-passage"></span></strong>
+            </div>
+        </div>
+
+        <div class="worksheet-body">
+            <div class="section">
+                <h3>1. 바른 우리말 연습 (맞춤법)</h3>
+                <p class="instruction">빈칸에 알맞은 글자를 적어 문장을 완성해보세요.</p>
+                <div id="ws-spelling" class="activity-box"></div>
+            </div>
+
+            <div class="section">
+                <h3>2. 띄어쓰기 연습</h3>
+                <p class="instruction">아래 글을 읽고 띄어 써야 할 곳에 'v' 표시를 해보세요.</p>
+                <div id="ws-spacing" class="activity-box spacing-box"></div>
+            </div>
+
+            <div class="section">
+                <h3 id="grammar-title">3. 글쓰기 기초 문법</h3>
+                <p id="grammar-instruction" class="instruction"></p>
+                <div id="ws-grammar" class="activity-box"></div>
+            </div>
+        </div>
+        
+        <div class="no-print print-btn-container" style="display: flex; gap: 10px; justify-content: center;">
+            <button onclick="window.print()" class="btn" style="flex: 1;">학생용 활동지 인쇄</button>
+            <button onclick="printAnswers()" class="btn" style="flex: 1; background-color: #e63946;">교사용 답안 인쇄</button>
+        </div>
+    </div>
+
+    <script src="acts_data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

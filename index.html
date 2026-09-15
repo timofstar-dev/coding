@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGOS 초등 국어 통권수업 마스터 프로그램 | 성경적 세계관 & 2022 개정 교육과정</title>
+    <meta name="description" content="성경적 세계관과 2022 개정 초등 국어 교육과정에 기반한 초등 독서/통권 수업 보조 마스터 프로그램">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo-area">
+                <div class="logo-icon"><i class="fa-solid fa-book-bookmark"></i></div>
+                <div class="logo-text">
+                    <h1>LOGOS <span>국어 마스터</span></h1>
+                    <p class="subtitle">성경적 세계관 ✕ 2022 개정 초등 국어 교육과정 통권수업 보조 프로그램</p>
+                </div>
+            </div>
+            <div class="header-badges">
+                <span class="badge badge-bible"><i class="fa-solid fa-cross"></i> 성경적 세계관(CFRR)</span>
+                <span class="badge badge-curriculum"><i class="fa-solid fa-graduation-cap"></i> 2022 개정 국어</span>
+                <button type="button" class="btn-api-settings" id="btn-open-api-modal"><i class="fa-solid fa-gear"></i> AI 설정</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-layout">
+
+        <!-- Left Input Panel -->
+        <section class="input-panel card">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-pen-to-square"></i> 도서 및 수업 설정</h2>
+                <p>도서 정보, 2022 성취기준 복수 선택 및 활동지 유형을 선택해주세요.</p>
+            </div>
+
+            <!-- AI OCR Scan Section -->
+            <div class="ai-scan-section">
+                <div class="ai-scan-header">
+                    <span class="quick-title"><i class="fa-solid fa-wand-magic-sparkles"></i> [New] 스캔본 AI 자동 분석 (PDF/이미지)</span>
+                    <p>책을 스캔한 파일을 업로드하면 AI가 내용을 읽고 자동으로 맞춤형 질문과 핵심 어휘를 추출합니다.</p>
+                </div>
+                <div class="ai-upload-box" id="ai-upload-box">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <p>클릭하여 PDF 또는 이미지 파일 업로드</p>
+                    <input type="file" id="ai-file-input" accept=".pdf, image/*" hidden>
+                </div>
+            </div>
+
+            <!-- Quick Template Loader Buttons -->
+            <div class="quick-templates">
+                <span class="quick-title"><i class="fa-solid fa-bolt"></i> 대표 예시도서 불러오기 (수동 테스트용):</span>
+                <div class="template-btns">
+                    <button type="button" class="btn-template" data-book="dogpoop">
+                        <span class="t-grade">1~2학년</span>
+                        <span class="t-name">강아지 똥</span>
+                    </button>
+                    <button type="button" class="btn-template" data-book="givingtree">
+                        <span class="t-grade">3~4학년</span>
+                        <span class="t-name">아낌없이 주는 나무</span>
+                    </button>
+                    <button type="button" class="btn-template" data-book="hen">
+                        <span class="t-grade">5~6학년</span>
+                        <span class="t-name">마당을 나온 암탉</span>
+                    </button>
+                </div>
+            </div>
+
+            <form id="master-form" class="master-form">
+                <div class="form-row">
+                    <div class="form-group flex-2">
+                        <label for="book-title"><i class="fa-solid fa-book"></i> 책 제목 <span class="req">*</span></label>
+                        <input type="text" id="book-title" placeholder="예: 강아지 똥, 마당을 나온 암탉" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="book-author"><i class="fa-solid fa-user-pen"></i> 저자</label>
+                        <input type="text" id="book-author" placeholder="예: 권정생">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="grade-group"><i class="fa-solid fa-layer-group"></i> 학년군 선택 <span class="req">*</span></label>
+                        <select id="grade-group" required>
+                            <option value="1-2">1~2학년군 (바른 언어, 기초 어휘, 마음 파악)</option>
+                            <option value="3-4" selected>3~4학년군 (문장의 짜임, 인물의 처지, 비유)</option>
+                            <option value="5-6">5~6학년군 (가치관 비판, 문맥 추론, 비판적 읽기)</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="chapter-title"><i class="fa-solid fa-bookmark"></i> 챕터 / 단원 제목 <span class="req">*</span></label>
+                        <input type="text" id="chapter-title" placeholder="예: 1장. 흙덩이와의 만남과 쓸모" required>
+                    </div>
+                </div>
+
+                <!-- 2022 개정 국어 성취기준 Dynamic 복수 선택 -->
+                <div class="form-group">
+                    <label><i class="fa-solid fa-list-check"></i> 2022 개정 국어과 성취기준 선택 (복수 선택 가능) <span class="req">*</span></label>
+                    <div class="standards-checkbox-grid" id="standards-checkbox-grid">
+                        <!-- Dynamic checkboxes loaded based on selected grade group -->
+                    </div>
+                </div>
+
+                <!-- 활동지 유형 선택 -->
+                <div class="form-group">
+                    <label for="worksheet-type"><i class="fa-solid fa-file-export"></i> 생성할 활동지 유형 <span class="req">*</span></label>
+                    <select id="worksheet-type" required>
+                        <option value="standard" selected>📝 [기본] 종합 하브루타 활동지 (어휘+내용파악+CFRR+실천)</option>
+                        <option value="short-writing">✍️ [짧은 글쓰기] 공감 답변 & 한 줄 묵상 활동지</option>
+                        <option value="long-writing">📜 [긴 글쓰기/서술형] 가치관 분석 & 개요 짜기 독후 감상문</option>
+                        <option value="vocab-grammar">🔤 [어휘 & 문법 집중] 문맥 추론 & 언어 실천 활동지</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="chapter-content"><i class="fa-solid fa-align-left"></i> 챕터 내용 및 줄거리 / 핵심 본문 (AI가 자동 요약 가능) <span class="req">*</span></label>
+                    <textarea id="chapter-content" rows="5" placeholder="해당 챕터의 핵심 사건, 등장인물의 대화, 주요 갈등 상황 및 내용을 넣어주세요." required></textarea>
+                </div>
+
+                <button type="submit" class="btn-primary btn-generate" id="btn-submit">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> 마스터 수업 패키지 생성하기
+                </button>
+            </form>
+        </section>
+
+        <!-- Right Output Panel -->
+        <section class="output-panel card" id="output-panel">
+            
+            <!-- Default Placeholder State -->
+            <div id="output-placeholder" class="placeholder-state">
+                <div class="placeholder-icon">
+                    <i class="fa-solid fa-feather-pointed"></i>
+                </div>
+                <h3>수업 마스터 패키지가 준비됩니다</h3>
+                <p>좌측 폼에 정보를 직접 입력하거나, <strong>[스캔본 AI 자동 분석]</strong> 기능을 활용해보세요.</p>
+                <div class="features-preview">
+                    <div class="feat-item"><i class="fa-solid fa-robot"></i> <strong>AI 스캔본(PDF/IMG) 텍스트 인식 및 자동 분석</strong></div>
+                    <div class="feat-item"><i class="fa-solid fa-file-lines"></i> <strong>맞춤형 학생용 Printable 활동지 (교사용 예시 답안 포함)</strong></div>
+                    <div class="feat-item"><i class="fa-solid fa-file-word"></i> <strong>구글 문서(Google Docs) 바로 열기/내보내기 연동</strong></div>
+                </div>
+            </div>
+
+            <!-- Active Results Container -->
+            <div id="output-content" class="output-content hidden">
+
+                <!-- Header Summary Card -->
+                <div class="summary-card">
+                    <div class="sum-top">
+                        <span class="sum-grade-badge" id="sum-grade-text">3~4학년군</span>
+                        <h2 class="sum-title" id="sum-book-title">아낌없이 주는 나무</h2>
+                        <span class="sum-chapter" id="sum-chapter-title">제 1장</span>
+                    </div>
+                    <div class="sum-meta">
+                        <span id="sum-curriculum-badge" class="meta-tag"><i class="fa-solid fa-graduation-cap"></i> 선택된 성취기준 2개</span>
+                        <span id="sum-type-badge" class="meta-tag type-tag"><i class="fa-solid fa-file-pen"></i> 활동지 유형: 기본 종합형</span>
+                        <span id="sum-ai-badge" class="meta-tag hidden" style="background:#fdf2f8; color:#be185d; border-color:#fbcfe8;"><i class="fa-solid fa-robot"></i> AI 스캔 분석 적용됨</span>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <div class="tabs-nav">
+                    <button type="button" class="tab-btn active" data-tab="tab-slide">
+                        <i class="fa-solid fa-display"></i> 1. 슬라이드 스크립트 (NotebookLM)
+                    </button>
+                    <button type="button" class="tab-btn" data-tab="tab-worksheet">
+                        <i class="fa-solid fa-file-signature"></i> 2. 학생용 활동지 (Printable)
+                    </button>
+                    <button type="button" class="tab-btn" data-tab="tab-guide">
+                        <i class="fa-solid fa-chalkboard-user"></i> 3. 수업 가이드 & 연계 활동
+                    </button>
+                </div>
+
+                <!-- TAB 1: Slide Script Guide -->
+                <div class="tab-pane active" id="tab-slide">
+                    <div class="pane-header">
+                        <div>
+                            <h3><i class="fa-solid fa-chalkboard"></i> 슬라이드 제작 가이드 & 발문 스크립트</h3>
+                            <p class="pane-desc">NotebookLM 소스 업로드용 요약과 교사가 슬라이드를 넘기며 진행할 수 있는 스크립트입니다.</p>
+                        </div>
+                        <button type="button" class="btn-secondary" id="btn-copy-notebooklm">
+                            <i class="fa-solid fa-copy"></i> NotebookLM 소스 복사
+                        </button>
+                    </div>
+
+                    <div class="notebooklm-card">
+                        <div class="card-badge"><i class="fa-solid fa-robot"></i> NotebookLM / AI 슬라이드 전용 소스 프롬프트</div>
+                        <div class="code-box" id="notebooklm-text"></div>
+                    </div>
+
+                    <div class="slides-sequence" id="slides-container"></div>
+                </div>
+
+                <!-- TAB 2: Student Worksheet (Printable & GDocs) -->
+                <div class="tab-pane" id="tab-worksheet">
+                    <div class="pane-header no-print" style="flex-wrap: wrap;">
+                        <div>
+                            <h3><i class="fa-solid fa-file-pen"></i> 학생용 맞춤 활동지</h3>
+                            <p class="pane-desc">인쇄 및 구글 문서(Google Docs) 내보내기, 교사용 예시 답안 토글이 지원됩니다.</p>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="btn-secondary" id="btn-toggle-answers">
+                                <i class="fa-solid fa-eye"></i> 교사용 예시 답안 보기
+                            </button>
+                            <button type="button" class="btn-primary" id="btn-export-gdocs" style="background:#0f9d58;">
+                                <i class="fa-solid fa-file-word"></i> 구글 문서로 복사
+                            </button>
+                            <button type="button" class="btn-primary btn-print" onclick="window.print()">
+                                <i class="fa-solid fa-print"></i> A4 인쇄 / PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Printable Worksheet Area -->
+                    <div class="worksheet-paper" id="worksheet-content">
+                        <!-- Dynamic Worksheet inserted here -->
+                    </div>
+                </div>
+
+                <!-- TAB 3: Teacher Guide & Extended Activities -->
+                <div class="tab-pane" id="tab-guide">
+                    <div class="pane-header">
+                        <div>
+                            <h3><i class="fa-solid fa-lightbulb"></i> 교사용 수업 지도안 & 확장 연계 활동</h3>
+                            <p class="pane-desc">선택된 성취기준 및 활동지 유형에 맞춘 45분 수업 흐름과 다양한 확장 활동입니다.</p>
+                        </div>
+                    </div>
+
+                    <div id="guide-container"></div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="app-footer no-print">
+        <p>LOGOS 초등 국어 통권수업 마스터 프로그램 &copy; 2026 | 성경적 세계관 ✕ 2022 개정 초등 국어 교육과정</p>
+    </footer>
+
+    <!-- API Key Settings Modal -->
+    <div class="modal-overlay hidden" id="api-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-key"></i> Google Gemini API 키 설정</h3>
+                <button class="btn-close" id="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:1rem; font-size:0.9rem; color:#475569;">스캔본(PDF/이미지) 자동 분석 기능을 사용하려면 Google Gemini API 키가 필요합니다. 키는 브라우저 내부에만 안전하게 저장됩니다.</p>
+                <div style="margin-bottom:1rem;">
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#2563eb; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Gemini API 키 무료 발급받기</a>
+                </div>
+                <input type="password" id="api-key-input" placeholder="AIzaSy..." style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:8px;">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" id="btn-save-api-key" style="width:100%;">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Loading Spinner -->
+    <div class="loading-overlay hidden" id="loading-overlay">
+        <div class="spinner"></div>
+        <h3 style="color:#fff; margin-top:1.5rem; font-size:1.2rem;">AI가 스캔 문서를 읽고 있습니다...</h3>
+        <p style="color:#cbd5e1; font-size:0.9rem; margin-top:0.5rem;" id="loading-msg">PDF/이미지에서 텍스트를 추출하고 세계관 질문을 생성 중입니다 (약 10~20초 소요)</p>
+    </div>
+    <!-- Scripts -->
+    <script src="script.js?v=4.0"></script>
+</body>
+</html>
