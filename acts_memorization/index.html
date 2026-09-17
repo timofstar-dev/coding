@@ -9,7 +9,7 @@
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body class="bg-gray-50 min-h-screen font-sans text-gray-800">
     <div class="max-w-4xl mx-auto p-6">
@@ -77,6 +77,20 @@
             </div>
 
             <div id="verses-container" class="space-y-6">
+                <!-- Instruction tooltip -->
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded-r">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fa-solid fa-lightbulb text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                <strong>💡 팁:</strong> 영어 단어를 <strong>클릭</strong>하면 그 단어부터 재생이 시작됩니다.<br>
+                                마우스로 여러 단어를 <strong>드래그해서 선택</strong>하면 해당 구간만 <strong>구간 반복 재생</strong>을 할 수 있습니다!
+                            </p>
+                        </div>
+                    </div>
+                </div>
                 <p class="text-gray-500 text-center py-8">Loading default verses...</p>
             </div>
         </section>
@@ -89,6 +103,6 @@
     </script>
     <!-- Main Script -->
     <script src="data.js"></script>
-    <script src="script.js?v=2"></script>
+    <script src="script.js?v=3"></script>
 </body>
 </html>

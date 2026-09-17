@@ -53,17 +53,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function parseVerses(text) {
         let cleanedText = text.replace(/\s+/g, ' ').trim();
-        
-        // Try to match the specific flashcard format:
-        // [Korean Ref] [English Ref] [English Text] [Korean Text]
-        // Example: "행 1:8 Acts 1:8" or "행 25:11b Acts 25:11b"
         const refRegex = /((?:[가-힣0-9]+\s+)?\d+:\d+[a-z]?(?:-\d+)?\s+[a-zA-Z0-9\s]+\s+\d+:\d+[a-z]?(?:-\d+)?)/gi;
-        
         const parts = cleanedText.split(refRegex);
         let segments = [];
         
         if (parts.length > 2) {
-            // Custom PDF layout matched
             for (let i = 1; i < parts.length; i += 2) {
                 const reference = parts[i].trim();
                 const textBlock = parts[i+1] ? parts[i+1].trim() : '';
@@ -71,14 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 let englishText = textBlock;
                 let koreanText = '';
                 
-                // Split English and Korean by the first Korean character
                 const koreanIndex = textBlock.search(/[가-힣]/);
                 if (koreanIndex !== -1) {
                     englishText = textBlock.substring(0, koreanIndex).trim();
                     koreanText = textBlock.substring(koreanIndex).trim();
                 }
                 
-                // Strip leading/trailing quotes from the extracted text
                 englishText = englishText.replace(/^["'\s]+|["'\s]+$/g, '');
                 koreanText = koreanText.replace(/^["'\s]+|["'\s]+$/g, '');
                 
@@ -87,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } else {
-            // Fallback for regular texts
             const verseRegex = /(?=\b\d+\s+[A-Z])/g;
             let rawSegments = cleanedText.split(verseRegex).map(v => v.trim()).filter(v => v.length > 0);
             
@@ -107,30 +98,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function formatTextWithBreaks(text) {
-        // Insert a reading break (/) after commas, semicolons, colons
-        let formatted = text.replace(/([,;:])(\s)/g, '$1<span class="break-point"></span>$2');
-        
-        // Insert before certain conjunctions and prepositions for long phrases
-        // Use word boundary \b
+        let result = '';
         const breakWords = ['and', 'but', 'so', 'because', 'who', 'which', 'that', 'for', 'if', 'when'];
-        const breakRegex = new RegExp(`(\\s)(${breakWords.join('|')})\\b`, 'gi');
+        const wordRegex = /[a-zA-Z0-9가-힣]+/g;
         
-        formatted = formatted.replace(breakRegex, '$1<span class="break-point"></span>$2');
+        let lastIndex = 0;
+        let match;
         
-        return formatted;
+        while ((match = wordRegex.exec(text)) !== null) {
+            let nonWord = text.substring(lastIndex, match.index);
+            nonWord = nonWord.replace(/([,;:])(\s)/g, '$1<span class="break-point"></span>$2');
+            
+            const word = match[0];
+            const startIdx = match.index;
+            const endIdx = startIdx + word.length;
+            
+            if (breakWords.includes(word.toLowerCase())) {
+                if (nonWord.match(/\s$/)) {
+                    nonWord = nonWord.replace(/(\s)$/, '$1<span class="break-point"></span>');
+                }
+            }
+            
+            result += nonWord;
+            result += `<span class="word cursor-pointer hover:text-indigo-600 transition-colors" data-start="${startIdx}" data-end="${endIdx}">${word}</span>`;
+            
+            lastIndex = wordRegex.lastIndex;
+        }
+        
+        let tail = text.substring(lastIndex);
+        tail = tail.replace(/([,;:])(\s)/g, '$1<span class="break-point"></span>$2');
+        result += tail;
+        
+        return result;
     }
 
     function formatSpokenTextWithPauses(text) {
-        // Add a comma before break words so the TTS engine pauses naturally.
         const breakWords = ['and', 'but', 'so', 'because', 'who', 'which', 'that', 'for', 'if', 'when'];
         let spoken = text;
-        
         breakWords.forEach(word => {
-            // Only add a comma if there isn't already a punctuation mark before the space
             const regex = new RegExp(`(?<![,;:.?!])\\s(${word})\\b`, 'gi');
             spoken = spoken.replace(regex, ', $1');
         });
-        
         return spoken;
     }
 
@@ -162,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 voiceSelect.appendChild(option);
             });
             
-            // Try to set a local voice first to avoid network errors on file:// protocol
             const defaultVoiceNames = ['Microsoft Zira', 'Microsoft David', 'Microsoft Mark', 'Samantha', 'Google US English', 'Alex', 'Daniel'];
             for (const name of defaultVoiceNames) {
                 const index = englishVoices.findIndex(v => v.name.includes(name));
@@ -313,9 +320,77 @@ document.addEventListener('DOMContentLoaded', () => {
             const speedSelect = verseDiv.querySelector('.speed-select');
             const loopBtn = verseDiv.querySelector('.loop-btn');
 
+            // --- Word Selection and A-B Loop Logic ---
+            verseDiv.addEventListener('click', (e) => {
+                const selection = window.getSelection();
+                if (!selection.isCollapsed) return;
+                
+                if (e.target.classList.contains('word')) {
+                    const wordStart = parseInt(e.target.dataset.start);
+                    
+                    verseDiv.dataset.resumeStart = wordStart;
+                    delete verseDiv.dataset.resumeEnd;
+                    
+                    verseDiv.querySelectorAll('.word').forEach(el => {
+                        el.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
+                    });
+                    e.target.classList.add('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
+                    
+                    stopSpeech();
+                    const wordU = new SpeechSynthesisUtterance(e.target.textContent);
+                    const selectedVoiceURI = voiceSelect?.value;
+                    if (selectedVoiceURI && availableVoices.length > 0) {
+                        const voice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
+                        if (voice) wordU.voice = voice;
+                    }
+                    wordU.rate = parseFloat(speedSelect.value) * 0.7;
+                    window.speechSynthesis.speak(wordU);
+                } else if (e.target.closest('.verse-text')) {
+                     delete verseDiv.dataset.resumeStart;
+                     delete verseDiv.dataset.resumeEnd;
+                     verseDiv.querySelectorAll('.word').forEach(el => {
+                        el.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
+                     });
+                }
+            });
+
+            verseDiv.addEventListener('mouseup', () => {
+                const selection = window.getSelection();
+                if (selection.isCollapsed) return;
+                
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const container = range.commonAncestorContainer;
+                    const parentEl = container.nodeType === 1 ? container : container.parentElement;
+                    
+                    const closestVerseText = parentEl.closest('.verse-text');
+                    if (closestVerseText) {
+                        const wordsInVerse = Array.from(closestVerseText.querySelectorAll('.word'));
+                        const selectedWords = wordsInVerse.filter(word => selection.containsNode(word, true));
+                        
+                        if (selectedWords.length > 0) {
+                            const startWord = selectedWords[0];
+                            const endWord = selectedWords[selectedWords.length - 1];
+                            
+                            verseDiv.dataset.resumeStart = startWord.dataset.start;
+                            verseDiv.dataset.resumeEnd = endWord.dataset.end;
+                            
+                            verseDiv.querySelectorAll('.word').forEach(el => {
+                                el.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
+                            });
+                            
+                            selectedWords.forEach(w => w.classList.add('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400'));
+                            selection.removeAllRanges();
+                        }
+                    }
+                }
+            });
+
             playBtn.addEventListener('click', () => {
                 const speed = parseFloat(speedSelect.value);
-                playVerse(verseId, verseObj.englishText, spokenText, speed, playBtn, pauseBtn);
+                const resumeStart = verseDiv.dataset.resumeStart ? parseInt(verseDiv.dataset.resumeStart) : 0;
+                const resumeEnd = verseDiv.dataset.resumeEnd ? parseInt(verseDiv.dataset.resumeEnd) : null;
+                playVerse(verseId, verseObj.englishText, spokenText, speed, playBtn, pauseBtn, resumeStart, resumeEnd);
             });
 
             pauseBtn.addEventListener('click', () => {
@@ -350,7 +425,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function playVerse(verseId, originalText, spokenText, speed, playBtn, pauseBtn) {
+    function getSpokenIndex(originalText, spokenText, originalIndex) {
+        let sIdx = 0;
+        let oIdx = 0;
+        while (oIdx < originalIndex && sIdx < spokenText.length && oIdx < originalText.length) {
+            if (spokenText[sIdx] === originalText[oIdx]) {
+                sIdx++;
+                oIdx++;
+            } else {
+                if (spokenText[sIdx] === ',') sIdx++;
+                else if (spokenText[sIdx] === ' ' && originalText[oIdx] !== ' ') sIdx++;
+                else { sIdx++; oIdx++; }
+            }
+        }
+        return sIdx;
+    }
+
+    function playVerse(verseId, originalText, spokenText, speed, playBtn, pauseBtn, resumeStart = 0, resumeEnd = null) {
         if (playingVerseId === verseId && window.speechSynthesis.paused) {
             window.speechSynthesis.resume();
             pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
@@ -362,14 +453,23 @@ document.addEventListener('DOMContentLoaded', () => {
         playingVerseId = verseId;
         const verseEl = document.getElementById(verseId);
         const verseTextEl = verseEl.querySelector('.verse-text');
-        const defaultHTML = formatTextWithBreaks(originalText);
         
         verseEl.classList.add('playing');
         playBtn.classList.add('hidden');
         pauseBtn.classList.remove('hidden');
         pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
 
-        const utterance = new SpeechSynthesisUtterance(spokenText);
+        let spokenResumeIdx = 0;
+        let spokenEndIdx = spokenText.length;
+        if (resumeStart > 0 || resumeEnd !== null) {
+            spokenResumeIdx = getSpokenIndex(originalText, spokenText, resumeStart);
+            if (resumeEnd !== null) {
+                spokenEndIdx = getSpokenIndex(originalText, spokenText, resumeEnd);
+            }
+        }
+        
+        const textToSpeak = spokenText.substring(spokenResumeIdx, spokenEndIdx);
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
         utterance.lang = 'en-US';
         
         const selectedVoiceURI = voiceSelect?.value;
@@ -386,21 +486,20 @@ document.addEventListener('DOMContentLoaded', () => {
         let hasFiredEnd = false;
 
         utterance.onboundary = (event) => {
-            console.log('Boundary event:', event.name, event.charIndex, event.charLength, spokenText.substring(event.charIndex, event.charIndex + (event.charLength || 10)));
             if (event.name !== 'word') return;
             
             let charLen = event.charLength;
             if (!charLen) {
-                // Find next space or punctuation
-                let remaining = spokenText.substring(event.charIndex);
+                let remaining = textToSpeak.substring(event.charIndex);
                 let match = remaining.match(/^[^\s,;:.?!]+/);
                 charLen = match ? match[0].length : 1;
-                console.log('Guessed charLen:', charLen);
             }
+            
+            const actualCharIndex = spokenResumeIdx + event.charIndex;
             
             let sIdx = 0;
             let oIdx = 0;
-            while (sIdx < event.charIndex && sIdx < spokenText.length && oIdx < originalText.length) {
+            while (sIdx < actualCharIndex && sIdx < spokenText.length && oIdx < originalText.length) {
                 if (spokenText[sIdx] === originalText[oIdx]) {
                     sIdx++;
                     oIdx++;
@@ -414,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let e_sIdx = sIdx;
             let e_oIdx = oIdx;
-            const targetSIdx = event.charIndex + charLen;
+            const targetSIdx = actualCharIndex + charLen;
             while (e_sIdx < targetSIdx && e_sIdx < spokenText.length && e_oIdx < originalText.length) {
                 if (spokenText[e_sIdx] === originalText[e_oIdx]) {
                     e_sIdx++;
@@ -427,41 +526,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const endIdx = e_oIdx;
             
-            let result = '';
-            let textCount = 0;
-            let inTag = false;
-            let startInserted = false;
-            let endInserted = false;
-            
-            for (let i = 0; i < defaultHTML.length; i++) {
-                const char = defaultHTML[i];
-                if (!startInserted && textCount === startIdx && !inTag) {
-                    result += '<span class="karaoke-highlight">';
-                    startInserted = true;
-                }
-                if (!endInserted && textCount === endIdx && !inTag) {
-                    result += '</span>';
-                    endInserted = true;
-                }
-                result += char;
-                if (char === '<') inTag = true;
-                else if (char === '>') inTag = false;
-                else if (!inTag) textCount++;
-            }
-            if (startInserted && !endInserted && textCount === endIdx) {
-                result += '</span>';
-            }
-            
             if (verseTextEl) {
-                verseTextEl.innerHTML = result;
-                // console.log('Highlighted HTML:', result); // Uncomment to debug HTML output
+                verseTextEl.querySelectorAll('.karaoke-highlight').forEach(el => el.classList.remove('karaoke-highlight'));
+                
+                const words = verseTextEl.querySelectorAll('.word');
+                words.forEach(wordEl => {
+                    const wStart = parseInt(wordEl.dataset.start);
+                    const wEnd = parseInt(wordEl.dataset.end);
+                    if (wStart < endIdx && wEnd > startIdx) {
+                        wordEl.classList.add('karaoke-highlight');
+                    }
+                });
             }
         };
 
         utterance.onend = () => {
             if (hasFiredEnd) return;
             hasFiredEnd = true;
-            if (verseTextEl) verseTextEl.innerHTML = defaultHTML; // reset highlight
+            
+            if (verseTextEl) {
+                verseTextEl.querySelectorAll('.karaoke-highlight').forEach(el => el.classList.remove('karaoke-highlight'));
+            }
+            
             resetVerseUI(verseId, playBtn, pauseBtn);
             if (playingVerseId === verseId) {
                 playingVerseId = null;
@@ -471,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isLooping = loopBtn.getAttribute('data-loop') === 'true';
 
             if (isLooping) {
-                playVerse(verseId, originalText, spokenText, speed, playBtn, pauseBtn);
+                playVerse(verseId, originalText, spokenText, speed, playBtn, pauseBtn, resumeStart, resumeEnd);
             } else if (isPlayingSelected) {
                 currentQueueIndex++;
                 playNextInQueue();
@@ -514,16 +600,14 @@ document.addEventListener('DOMContentLoaded', () => {
             el.classList.remove('playing', 'paused');
             if (playBtn) playBtn.classList.remove('hidden');
             if (pauseBtn) pauseBtn.classList.add('hidden');
-            const highlightEl = el.querySelector('.karaoke-highlight');
-            if (highlightEl) {
-                const parent = highlightEl.parentNode;
-                while (highlightEl.firstChild) parent.insertBefore(highlightEl.firstChild, highlightEl);
-                parent.removeChild(highlightEl);
+            
+            const verseTextEl = el.querySelector('.verse-text');
+            if (verseTextEl) {
+                verseTextEl.querySelectorAll('.karaoke-highlight').forEach(w => w.classList.remove('karaoke-highlight'));
             }
         }
     }
 
-    // Load default Acts verses if available, now safely after all const declarations
     if (typeof DEFAULT_ACTS_TEXT !== 'undefined') {
         const verses = parseVerses(DEFAULT_ACTS_TEXT);
         renderVerses(verses);
