@@ -82,6 +82,97 @@ const grammarPools = {
     ]
 };
 
+const confusingWordsPool = [
+    {
+        title: "[의 / 에]",
+        explanation: "<strong>'의'</strong>는 누구의 것인지(소유)를 나타내고, <strong>'에'</strong>는 장소나 시간을 나타냅니다.",
+        example: "예수님<strong>의</strong> 제자 (소유) / 교회<strong>에</strong> 가다 (장소)",
+        task: "다음 문장에서 잘못된 부분을 찾아 바르게 고쳐 써보세요.",
+        question: "나의 성경책을 책상의 두었다.",
+        correctAnswer: "나의 성경책을 책상에 두었다."
+    },
+    {
+        title: "[되 / 돼]",
+        explanation: "<strong>'돼'</strong>는 '되어'의 줄임말입니다. 헷갈릴 때는 '하'와 '해'를 넣어보세요. ('하'가 어울리면 '되', '해'가 어울리면 '돼')",
+        example: "착한 사람이 <strong>돼</strong>라. (해라 ⭕ / 하라 ❌) <br> 밥을 먹으면 안 <strong>되</strong>니? (하니 ⭕ / 해니 ❌)",
+        task: "다음 문장에서 알맞은 말을 골라 동그라미 치고, 문장을 바르게 다시 써보세요.",
+        question: "이제 집에 가도 ( 되 / 돼 )?",
+        correctAnswer: "이제 집에 가도 돼?"
+    },
+    {
+        title: "[안 / 않]",
+        explanation: "<strong>'안'</strong>은 '아니'의 줄임말이고, <strong>'않'</strong>은 '아니하'의 줄임말입니다. 빼버렸을 때 문장이 말이 되면 '안', 말이 안 되면 '않'을 씁니다.",
+        example: "밥을 <strong>안</strong> 먹었다. (밥을 먹었다 ⭕) <br> 먹지 <strong>않</strong>았다. (먹지 았다 ❌)",
+        task: "다음 빈칸에 '안'이나 '않' 중 알맞은 것을 넣고 문장을 완성해 보세요.",
+        question: "나는 오늘 거짓말을 하지 (ㅤㅤㅤ)겠다고 다짐했다.",
+        correctAnswer: "나는 오늘 거짓말을 하지 않겠다고 다짐했다."
+    },
+    {
+        title: "[로서 / 로써]",
+        explanation: "<strong>'로서'</strong>는 자격이나 신분을 나타내고, <strong>'로써'</strong>는 도구나 방법을 나타냅니다. (사람 뒤에는 보통 '로서', 물건이나 수단 뒤에는 '로써'가 옵니다.)",
+        example: "학생으<strong>로서</strong> 공부를 열심히 한다. (자격) <br> 눈물으<strong>로써</strong> 호소했다. (수단/방법)",
+        task: "다음 빈칸에 '로서' 또는 '로써'를 알맞게 적어 문장을 완성해 보세요.",
+        question: "하나님의 자녀(ㅤㅤㅤ) 부끄럽지 않게 살아야 한다.",
+        correctAnswer: "하나님의 자녀로서 부끄럽지 않게 살아야 한다."
+    },
+    {
+        title: "[다르다 / 틀리다]",
+        explanation: "<strong>'다르다'</strong>는 서로 같지 않다는 뜻(Different)이고, <strong>'틀리다'</strong>는 사실과 어긋나거나 정답이 맞지 않다는 뜻(Wrong)입니다.",
+        example: "나와 너는 성격이 <strong>달라</strong>. / 계산이 <strong>틀렸어</strong>.",
+        task: "다음 문장에서 잘못된 부분을 찾아 바르게 고쳐 써보세요.",
+        question: "내 생각은 너의 생각과 틀려.",
+        correctAnswer: "내 생각은 너의 생각과 달라."
+    },
+    {
+        title: "[가르치다 / 가리키다]",
+        explanation: "<strong>'가르치다'</strong>는 지식이나 이치를 깨닫게 한다는 뜻이고, <strong>'가리키다'</strong>는 손가락 등으로 어떤 방향이나 대상을 집어서 보여준다는 뜻입니다.",
+        example: "선생님이 수학을 <strong>가르치다</strong>. / 손가락으로 별을 <strong>가리키다</strong>.",
+        task: "다음 괄호 안에서 알맞은 말을 고르고, 그 단어를 사용하여 나만의 짧은 문장을 지어보세요.",
+        question: "예수님께서 하늘을 ( 가르치며 / 가리키며 ) 말씀하셨다.",
+        correctAnswer: "가리키며 (자유롭게 지은 문장을 확인해 주세요)"
+    },
+    {
+        title: "[맞히다 / 맞추다]",
+        explanation: "<strong>'맞히다'</strong>는 정답을 골라내거나 과녁에 명중시킬 때 쓰고, <strong>'맞추다'</strong>는 서로 떨어져 있는 것을 제자리에 붙이거나 서로 비교해 볼 때 씁니다.",
+        example: "퀴즈 정답을 <strong>맞히다</strong>. / 퍼즐을 <strong>맞추다</strong>. / 친구와 정답을 <strong>맞춰</strong>보다.",
+        task: "다음 빈칸에 '맞혀' 또는 '맞춰' 중 알맞은 말을 골라 적어보세요.",
+        question: "시험이 끝난 후 친구와 함께 답안지를 (ㅤㅤㅤ) 보았다.",
+        correctAnswer: "맞춰"
+    },
+    {
+        title: "[띄다 / 띠다]",
+        explanation: "<strong>'띄다'</strong>는 눈에 확 보이거나 간격을 벌릴 때(뜨이다/띄우다) 쓰고, <strong>'띠다'</strong>는 어떤 성질, 색깔, 감정을 몸이나 얼굴에 가질 때 씁니다.",
+        example: "눈에 <strong>띄는</strong> 행동을 하다. / 온화한 미소를 <strong>띠다</strong>.",
+        task: "다음 문장에서 틀린 부분을 찾아 바르게 고쳐 써보세요.",
+        question: "예수님은 인자한 미소를 띄고 계셨다.",
+        correctAnswer: "예수님은 인자한 미소를 띠고 계셨다."
+    },
+    {
+        title: "[낫다 / 낳다]",
+        explanation: "<strong>'낫다'</strong>는 병이 고쳐지거나 두 개를 비교해 더 좋을 때 쓰고, <strong>'낳다'</strong>는 아기나 알을 몸 밖으로 내놓을 때 씁니다.",
+        example: "감기가 <strong>낫다</strong>. / 이것이 저것보다 <strong>낫다</strong>. / 아기를 <strong>낳다</strong>.",
+        task: "다음 빈칸에 알맞은 말을 골라 적어보세요.",
+        question: "아프던 배가 드디어 다 ( 나았어 / 낳았어 ).",
+        correctAnswer: "나았어"
+    },
+    {
+        title: "[이었다 / 이였다]",
+        explanation: "<strong>'이었다(였)'</strong>는 명사 뒤에 붙는데, 앞 글자에 받침이 있으면 '이었다', 받침이 없으면 '였다'를 씁니다. '이였다'는 아예 없는 말입니다.",
+        example: "그는 학생<strong>이었다</strong>. (받침 O) / 그는 천사<strong>였다</strong>. (받침 X)",
+        task: "다음 문장에서 잘못된 부분을 찾아 바르게 고쳐 써보세요.",
+        question: "베드로는 갈릴리의 어부이였다.",
+        correctAnswer: "베드로는 갈릴리의 어부였다. (또는 어부이었다.)"
+    },
+    {
+        title: "[체하다 / 채]",
+        explanation: "<strong>'~은 체하다'</strong>는 거짓으로 꾸미는 태도를 뜻합니다. <strong>'채'</strong>는 어떤 상태가 계속되는 것을 뜻합니다. (참고: 음식을 먹고 탈이 나는 것도 '체하다'입니다.)",
+        example: "아프면서도 안 아픈 <strong>체하다</strong>. / 옷을 입은 <strong>채</strong> 잠들다.",
+        task: "다음 빈칸에 '체'와 '채' 중 알맞은 글자를 넣어 문장을 완성해 보세요.",
+        question: "나는 성경책을 펼쳐 놓은 (ㅤ)로 꾸벅꾸벅 졸았다.",
+        correctAnswer: "나는 성경책을 펼쳐 놓은 채로 꾸벅꾸벅 졸았다."
+    }
+];
+
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('date').valueAsDate = new Date();
@@ -170,6 +261,14 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
 
         const qTypeIndex = Math.floor(Math.random() * grammarPools[grade].length);
 
+        const confusingWordIndices = [];
+        while (confusingWordIndices.length < 2) {
+            const rand = Math.floor(Math.random() * confusingWordsPool.length);
+            if (!confusingWordIndices.includes(rand)) {
+                confusingWordIndices.push(rand);
+            }
+        }
+
         state = {
             id: Date.now(),
             date: date,
@@ -178,7 +277,7 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
             startVerse: startVerse,
             endVerse: endVerse,
             qTypeIndex: qTypeIndex,
-            spellingVerses: getRandomVerses(verses, 5),
+            confusingWordIndices: confusingWordIndices,
             spacingVerses: getRandomVerses(verses, 5),
             grammarVerses: getRandomVerses(verses, 5) // 기본 5문제용 (5~6학년은 5문제+고정2문제)
         };
@@ -197,28 +296,32 @@ function renderWorksheetUI(state) {
     document.getElementById('ws-passage').textContent = `${state.chapter}장 ${state.startVerse}절 ~ ${state.endVerse}절`;
     document.getElementById('ws-main-title').textContent = "사도행전 성경적 세계관 논술 활동지";
 
-    // 2. 맞춤법 연습
-    let spellingHtml = '';
-    state.spellingVerses.forEach((v, index) => {
-        const words = v.text.split(' ');
-        const numBlanks = Math.min(Math.floor(words.length / 3), 3);
-        const blankIndices = [];
-        for(let i=0; i<numBlanks; i++) {
-            let r = (index * 7 + i * 3) % words.length;
-            if(!blankIndices.includes(r) && words[r].length > 1) blankIndices.push(r);
-        }
-        
-        let sentence = `<strong>(${index + 1})</strong> `;
-        words.forEach((word, idx) => {
-            if (blankIndices.includes(idx)) {
-                sentence += `<span class="spelling-blank"><span class="answer-text">${word}</span></span> `;
-            } else {
-                sentence += `${word} `;
-            }
+    // 2. 헷갈리는 우리말 바로쓰기
+    let confusingHtml = '';
+    if (state.confusingWordIndices) {
+        state.confusingWordIndices.forEach((idx, index) => {
+            const item = confusingWordsPool[idx];
+            confusingHtml += `
+                <div class="confusing-box" style="margin-bottom: 25px; page-break-inside: avoid;">
+                    <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1;">
+                        <h4 style="margin-top: 0; color: #334155; margin-bottom: 8px;">(${index + 1}) ${item.title}</h4>
+                        <p style="margin: 0 0 5px 0; font-size: 15px; color: #475569;">${item.explanation}</p>
+                        <p style="margin: 0; font-size: 14.5px; color: #2563eb;"><strong>[예시]</strong> ${item.example}</p>
+                    </div>
+                    <div style="padding-left: 5px;">
+                        <p style="margin-bottom: 10px; font-weight: bold; color: #1e293b;">✏️ ${item.task}</p>
+                        <p style="margin-bottom: 10px; font-size: 17px;">${item.question}</p>
+                        <div style="width: 100%; min-height: 40px; border-bottom: 1px dashed #cbd5e1; display: flex; align-items: flex-end; padding-bottom: 5px;">
+                            <span class="answer-text">[정답 가이드] ${item.correctAnswer}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
         });
-        spellingHtml += `<div style="margin-bottom: 15px;">${sentence}</div>`;
-    });
-    document.getElementById('ws-spelling').innerHTML = spellingHtml;
+    } else {
+        confusingHtml = '<p style="color:#888;">이전 버전의 기록이라 표시할 수 없습니다. (새로 생성해주세요.)</p>';
+    }
+    document.getElementById('ws-confusing-words').innerHTML = confusingHtml;
 
     // 3. 띄어쓰기 연습
     let spacingHtml = '';
