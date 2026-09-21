@@ -302,9 +302,11 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
             return;
         }
         
-        const verses = [];
+        const versesERV = [];
+        const versesRKV = [];
         for (let i = startVerse; i <= endVerse; i++) {
-            verses.push({ num: i, text: actsData[chapter][i-1] });
+            versesERV.push({ num: i, text: actsData[chapter][i-1] });
+            versesRKV.push({ num: i, text: actsDataRkv[chapter][i-1] });
         }
 
         const checkedBoxes = document.querySelectorAll('input[name="confusingWord"]:checked');
@@ -327,8 +329,10 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
             endVerse: endVerse,
             qTypeIndex: qTypeIndex,
             confusingWordIndices: confusingWordIndices,
-            spacingVerses: getRandomVerses(verses, 5),
-            grammarVerses: getRandomVerses(verses, 5) // 기본 5문제용 (5~6학년은 5문제+고정2문제)
+            spacingVerses: getRandomVerses(versesRKV, 5),
+            grammarVerses: getRandomVerses(versesRKV, 5), // 기본 5문제용 (5~6학년은 5문제+고정2문제)
+            allVersesERV: versesERV,
+            allVersesRKV: versesRKV
         };
         
         saveHistory(state);
@@ -344,6 +348,34 @@ function renderWorksheetUI(state) {
     document.getElementById('ws-date').textContent = state.date;
     document.getElementById('ws-passage').textContent = `${state.chapter}장 ${state.startVerse}절 ~ ${state.endVerse}절`;
     document.getElementById('ws-main-title').textContent = "사도행전 성경적 세계관 논술 활동지";
+
+    // 0. 오늘의 말씀 읽기 (비교)
+    let rkvHtml = '';
+    let ervHtml = '';
+    
+    const versesERV = state.allVersesERV || [];
+    const versesRKV = state.allVersesRKV || [];
+    
+    if (versesERV.length === 0) {
+        for (let i = state.startVerse; i <= state.endVerse; i++) {
+            versesERV.push({ num: i, text: actsData[state.chapter][i-1] });
+            versesRKV.push({ num: i, text: actsDataRkv[state.chapter][i-1] });
+        }
+    }
+
+    versesRKV.forEach(v => {
+        rkvHtml += `<div style="margin-bottom: 8px;"><strong>${v.num}</strong> ${v.text}</div>`;
+    });
+    versesERV.forEach(v => {
+        ervHtml += `<div style="margin-bottom: 8px;"><strong>${v.num}</strong> ${v.text}</div>`;
+    });
+    
+    const rkvEl = document.getElementById('ws-passage-rkv');
+    const ervEl = document.getElementById('ws-passage-erv');
+    if (rkvEl && ervEl) {
+        rkvEl.innerHTML = rkvHtml;
+        ervEl.innerHTML = ervHtml;
+    }
 
     // 2. 헷갈리는 우리말 바로쓰기
     let confusingHtml = '';
