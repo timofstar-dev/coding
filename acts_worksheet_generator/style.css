@@ -109,8 +109,8 @@ input[type="date"], select {
     border-radius: 5px;
 }
 
-/* 페이지 잘림 방지 (인쇄 시 중요) */
-.section, .grammar-q, .activity-box {
+/* 페이지 잘림 방지 (인쇄 시 중요) - 개별 문제 단위로만 적용 */
+.grammar-q, .confusing-box, .spacing-item, .explanation-box {
     page-break-inside: avoid;
     break-inside: avoid;
 }

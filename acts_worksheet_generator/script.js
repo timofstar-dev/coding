@@ -170,6 +170,14 @@ const confusingWordsPool = [
         task: "다음 빈칸에 '체'와 '채' 중 알맞은 글자를 넣어 문장을 완성해 보세요.",
         question: "나는 성경책을 펼쳐 놓은 (ㅤ)로 꾸벅꾸벅 졸았다.",
         correctAnswer: "나는 성경책을 펼쳐 놓은 채로 꾸벅꾸벅 졸았다."
+    },
+    {
+        title: "[같이 / 같은 띄어쓰기]",
+        explanation: "<strong>'같은'</strong>은 항상 앞말과 띄어 씁니다(예: 천사 같은). <strong>'같이'</strong>는 '얼음같이(처럼)' 뜻일 때는 앞말에 붙여 쓰고, '나와 같이(함께)' 뜻일 때는 띄어 씁니다. 단, <strong>'다같이'</strong>는 한 단어라 붙여 씁니다.",
+        example: "바람 <strong>같은</strong> 소리 (띄움) / 생각과 <strong>같이</strong> (띄움) / <strong>다같이</strong> 모이다 (붙임)",
+        task: "다음 괄호 안에서 띄어쓰기가 알맞은 것을 골라보세요.",
+        question: "제자들은 ( 다같이 / 다 같이 ) 모여 기도했습니다.",
+        correctAnswer: "다같이"
     }
 ];
 
@@ -187,6 +195,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     updateVerseSelects();
     chapterSelect.addEventListener('change', updateVerseSelects);
+
+    initConfusingWordsCheckboxes();
+    updateGrammarTypeSelect();
+    document.getElementById('grade').addEventListener('change', updateGrammarTypeSelect);
     
     document.getElementById('generatorForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -196,6 +208,42 @@ document.addEventListener('DOMContentLoaded', () => {
     updateFilterDateDropdown();
     renderHistory();
 });
+
+function initConfusingWordsCheckboxes() {
+    const container = document.getElementById('confusingWordsCheckboxes');
+    let html = '';
+    confusingWordsPool.forEach((item, index) => {
+        html += `<label style="display: block; margin-bottom: 5px; cursor: pointer;">
+            <input type="checkbox" name="confusingWord" value="${index}"> ${index + 1}. ${item.title}
+        </label>`;
+    });
+    container.innerHTML = html;
+
+    // Check exactly 3 checkboxes (randomly) initially
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+    const randomIndices = [];
+    while (randomIndices.length < 3) {
+        const rand = Math.floor(Math.random() * confusingWordsPool.length);
+        if (!randomIndices.includes(rand)) randomIndices.push(rand);
+    }
+    randomIndices.forEach(idx => {
+        checkboxes[idx].checked = true;
+    });
+}
+
+function updateGrammarTypeSelect() {
+    const grade = document.getElementById('grade').value;
+    const select = document.getElementById('grammarType');
+    select.innerHTML = '';
+    
+    const pool = grammarPools[grade];
+    pool.forEach((item, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = item.name;
+        select.appendChild(option);
+    });
+}
 
 function updateVerseSelects() {
     const chapter = document.getElementById('chapter').value;
@@ -259,15 +307,16 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
             verses.push({ num: i, text: actsData[chapter][i-1] });
         }
 
-        const qTypeIndex = Math.floor(Math.random() * grammarPools[grade].length);
-
-        const confusingWordIndices = [];
-        while (confusingWordIndices.length < 2) {
-            const rand = Math.floor(Math.random() * confusingWordsPool.length);
-            if (!confusingWordIndices.includes(rand)) {
-                confusingWordIndices.push(rand);
-            }
+        const checkedBoxes = document.querySelectorAll('input[name="confusingWord"]:checked');
+        if (checkedBoxes.length !== 3) {
+            document.getElementById('checkbox-warning').style.display = 'block';
+            alert("헷갈리는 우리말 항목을 정확히 3개 선택해 주세요.");
+            return;
         }
+        document.getElementById('checkbox-warning').style.display = 'none';
+
+        const confusingWordIndices = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+        const qTypeIndex = parseInt(document.getElementById('grammarType').value);
 
         state = {
             id: Date.now(),
@@ -514,10 +563,23 @@ function loadState(id) {
     if (state) {
         document.getElementById('date').value = state.date;
         document.getElementById('grade').value = state.grade;
+        updateGrammarTypeSelect(); // Update dropdown options first
+        if (state.qTypeIndex !== undefined) {
+            document.getElementById('grammarType').value = state.qTypeIndex;
+        }
+
         document.getElementById('chapter').value = state.chapter;
         updateVerseSelects();
         document.getElementById('startVerse').value = state.startVerse;
         document.getElementById('endVerse').value = state.endVerse;
+
+        if (state.confusingWordIndices) {
+            const checkboxes = document.querySelectorAll('input[name="confusingWord"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            state.confusingWordIndices.forEach(idx => {
+                if (checkboxes[idx]) checkboxes[idx].checked = true;
+            });
+        }
 
         generateWorksheet(true, state);
     } else {
