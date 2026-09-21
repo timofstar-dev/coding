@@ -140,7 +140,7 @@ input[type="date"], select {
 }
 
 .spacing-box {
-    letter-spacing: 1px; /* 띄어쓰기 연습용이므로 조금 덜 줄임 */
+    letter-spacing: 3pt; /* 띄어쓰기 연습용이므로 자간을 더 넓게 설정 (사용자 요청 반영) */
     word-break: break-all;
     line-height: 2.5;
 }
