@@ -626,3 +626,124 @@ function clearHistory() {
         renderHistory();
     }
 }
+
+// AI 정답 생성 기능
+async function generateAIAnswers() {
+    let apiKey = localStorage.getItem('geminiApiKey');
+    if (!apiKey) {
+        apiKey = prompt("교사용 정답을 자동 생성하려면 Gemini API 키가 필요합니다.\n(보안상 코드에 직접 저장할 수 없으나, 한 번 입력하면 브라우저에 안전하게 저장되어 다음부터는 묻지 않습니다.)\n\n발급받은 API 키를 입력해주세요:");
+        if (!apiKey) return;
+        localStorage.setItem('geminiApiKey', apiKey);
+    }
+
+    const wsArea = document.getElementById('worksheetArea');
+    if (!wsArea || wsArea.style.display === 'none') {
+        alert("먼저 활동지를 생성해주세요.");
+        return;
+    }
+
+    const titleEl = document.getElementById('grammar-title').textContent;
+    const instEl = document.getElementById('grammar-instruction').textContent;
+    
+    // 문제 수집
+    const questions = [];
+    document.querySelectorAll('.grammar-q').forEach((el, index) => {
+        const verseEl = el.querySelector('.grammar-passage');
+        if (verseEl) {
+            questions.push(`문제 ${index + 1}: ${verseEl.textContent.trim()}`);
+        }
+    });
+
+    if (questions.length === 0) {
+         alert("이 문제 유형은 말씀 기반 문제가 없어 자동 생성을 지원하지 않습니다.");
+         return;
+    }
+
+    const aiBtn = document.getElementById('aiAnswerBtn');
+    const originalBtnText = aiBtn.innerHTML;
+    aiBtn.innerHTML = "⏳ AI가 정답 생성 중...";
+    aiBtn.disabled = true;
+
+    try {
+        const promptText = `
+너는 초등학생 주일학교 선생님이야. 다음 문제들에 대해 교사용 정답 가이드를 만들어줘.
+단원: ${titleEl}
+지시사항: ${instEl}
+
+${questions.join('\n')}
+
+각 문제에 대한 교사용 정답(초등학생 눈높이에 맞춘 간단한 정답 및 풀이)을 아래 JSON 배열 형식으로만 반환해. 다른 설명은 절대 넣지 마.
+[
+  { 
+    "inlineAnswers": ["주어 정답", "서술어 정답"], // 빈칸에 들어갈 아주 짧은 단답형 정답 (빈칸이 2개면 2개, 1개면 1개, 없으면 빈 배열)
+    "guide": "이 문장의 주어는 'OOO'이고, 서술어는 'OOO'입니다." // 교사용 가이드에 들어갈 상세한 설명이나 전체 정답 문장
+  }
+]
+`;
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: promptText
+                    }]
+                }]
+            })
+        });
+
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error.message);
+        }
+        
+        const rawText = data.candidates[0].content.parts[0].text;
+        const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+        
+        if (!jsonMatch) throw new Error("JSON 파싱 실패");
+        
+        const answers = JSON.parse(jsonMatch[0]);
+        const qElements = document.querySelectorAll('.grammar-q');
+        
+        answers.forEach((ans, idx) => {
+            if (qElements[idx]) {
+                // 1. 가이드 텍스트 업데이트
+                const answerBox = qElements[idx].querySelector('.grammar-answer');
+                if (answerBox) {
+                    answerBox.innerHTML = `
+                        <span style="color:#e63946; font-weight:bold;">[AI 정답 가이드]</span> 
+                        <span style="color:#2c3e50;">${ans.guide}</span> <br> 
+                        <span style="color:#888; font-size: 13px;">원본: ${questions[idx].replace(`문제 ${idx+1}: `, '')}</span>
+                    `;
+                }
+                
+                // 2. 인라인 빈칸 업데이트 (원본 참조 -> 실제 정답)
+                const blanks = qElements[idx].querySelectorAll('.answer-text');
+                if (ans.inlineAnswers && Array.isArray(ans.inlineAnswers)) {
+                    blanks.forEach((blank, bIdx) => {
+                        if (ans.inlineAnswers[bIdx]) {
+                            blank.textContent = ans.inlineAnswers[bIdx];
+                        }
+                    });
+                }
+            }
+        });
+
+        alert("AI 정답 생성이 완료되었습니다! '교사용 답안 인쇄' 버튼을 눌러 확인해 보세요.");
+
+    } catch (err) {
+        console.error(err);
+        let errorMsg = "AI 정답 생성 중 오류가 발생했습니다.\n\n에러: " + err.message;
+        if (err.message.includes("API key not valid")) {
+            errorMsg = "API 키가 올바르지 않습니다. 키를 다시 확인해 주세요.";
+            localStorage.removeItem('geminiApiKey');
+        }
+        alert(errorMsg);
+    } finally {
+        aiBtn.innerHTML = originalBtnText;
+        aiBtn.disabled = false;
+    }
+}

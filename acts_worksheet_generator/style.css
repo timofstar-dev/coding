@@ -227,16 +227,22 @@ input[type="date"], select {
 
 /* 인쇄 시 스타일 */
 @media print {
+    @page {
+        margin: 0.5cm; /* 브라우저 인쇄 여백 최소화 */
+    }
     body {
         background: white;
         padding: 0;
+        margin: 0;
     }
     .no-print {
         display: none !important;
     }
     .worksheet-container {
         box-shadow: none;
-        padding: 0;
+        padding: 0.5cm; /* 최소 0.5cm 여백 보장 */
+        margin: 0;
         max-width: 100%;
+        box-sizing: border-box; /* 패딩 포함 크기 계산 */
     }
 }
