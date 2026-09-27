@@ -249,6 +249,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    document.addEventListener('selectionchange', () => {
+        const selection = window.getSelection();
+        if (selection.isCollapsed) return;
+        
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const container = range.commonAncestorContainer;
+            const parentEl = container.nodeType === 1 ? container : container.parentElement;
+            
+            const closestVerseText = parentEl.closest('.verse-text');
+            if (closestVerseText) {
+                const verseDiv = closestVerseText.closest('[id^="verse-"]');
+                if (verseDiv) {
+                    const wordsInVerse = Array.from(closestVerseText.querySelectorAll('.word'));
+                    const selectedWords = wordsInVerse.filter(word => selection.containsNode(word, true));
+                    
+                    if (selectedWords.length > 0) {
+                        const startWord = selectedWords[0];
+                        const endWord = selectedWords[selectedWords.length - 1];
+                        
+                        verseDiv.dataset.resumeStart = startWord.dataset.start;
+                        verseDiv.dataset.resumeEnd = endWord.dataset.end;
+                        
+                        verseDiv.querySelectorAll('.word').forEach(el => {
+                            el.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
+                        });
+                        
+                        selectedWords.forEach(w => w.classList.add('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400'));
+                    }
+                }
+            }
+        }
+    });
+
     function renderVerses(verses) {
         stopSpeech();
         isPlayingSelected = false;
@@ -355,33 +389,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             verseDiv.addEventListener('mouseup', () => {
-                const selection = window.getSelection();
-                if (selection.isCollapsed) return;
-                
-                if (selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    const container = range.commonAncestorContainer;
-                    const parentEl = container.nodeType === 1 ? container : container.parentElement;
-                    
-                    const closestVerseText = parentEl.closest('.verse-text');
-                    if (closestVerseText) {
-                        const wordsInVerse = Array.from(closestVerseText.querySelectorAll('.word'));
-                        const selectedWords = wordsInVerse.filter(word => selection.containsNode(word, true));
-                        
-                        if (selectedWords.length > 0) {
-                            const startWord = selectedWords[0];
-                            const endWord = selectedWords[selectedWords.length - 1];
-                            
-                            verseDiv.dataset.resumeStart = startWord.dataset.start;
-                            verseDiv.dataset.resumeEnd = endWord.dataset.end;
-                            
-                            verseDiv.querySelectorAll('.word').forEach(el => {
-                                el.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
-                            });
-                            
-                            selectedWords.forEach(w => w.classList.add('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400'));
+                // 데스크탑 환경(마우스 사용)에서만 드래그 완료 후 기본 선택 영역을 해제합니다.
+                // 모바일 환경에서는 선택 핸들을 유지하여 사용자가 범위를 조절할 수 있게 합니다.
+                if (window.matchMedia("(pointer: fine)").matches) {
+                    const selection = window.getSelection();
+                    if (!selection.isCollapsed) {
+                        setTimeout(() => {
                             selection.removeAllRanges();
-                        }
+                        }, 10);
                     }
                 }
             });
