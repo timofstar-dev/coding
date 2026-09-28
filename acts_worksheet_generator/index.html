@@ -84,8 +84,19 @@
                 </select>
             </div>
 
+            <!-- 선택 도구 모음 -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 5px;">
+                <label style="font-size: 14px; cursor: pointer; color: #475569;">
+                    <input type="checkbox" id="selectAllHistory" onchange="toggleSelectAllHistory(this.checked)"> 전체 선택
+                </label>
+            </div>
+
             <ul id="historyList" style="list-style: none; padding: 0;"></ul>
-            <button type="button" class="btn" onclick="clearHistory()" style="background-color: #94a3b8; margin-top: 15px; font-size: 15px;">전체 기록 초기화</button>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" class="btn" onclick="deleteSelectedHistory()" style="background-color: #f59e0b; font-size: 15px;">선택 기록 삭제</button>
+                <button type="button" class="btn" onclick="clearHistory()" style="background-color: #94a3b8; font-size: 15px;">전체 기록 초기화</button>
+            </div>
         </div>
     </div>
 

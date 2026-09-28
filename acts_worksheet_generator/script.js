@@ -620,11 +620,41 @@ function renderHistory() {
         }
 
         li.innerHTML = `
-            <span>📅 ${item.date} | 📖 행 ${item.chapter}:${item.startVerse}~${item.endVerse} | 🧑‍🎓 ${getGradeName(item.grade)} | ✏️ <strong>${typeName}</strong></span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" class="history-checkbox" value="${item.id}" style="transform: scale(1.2); cursor: pointer;">
+                <span>📅 ${item.date} | 📖 행 ${item.chapter}:${item.startVerse}~${item.endVerse} | 🧑‍🎓 ${getGradeName(item.grade)} | ✏️ <strong>${typeName}</strong></span>
+            </div>
             <button type="button" class="history-btn" onclick='loadState(${item.id})'>불러오기</button>
         `;
         ul.appendChild(li);
     });
+}
+
+function toggleSelectAllHistory(isChecked) {
+    const checkboxes = document.querySelectorAll('.history-checkbox');
+    checkboxes.forEach(cb => cb.checked = isChecked);
+}
+
+function deleteSelectedHistory() {
+    const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert("삭제할 기록을 먼저 선택해 주세요.");
+        return;
+    }
+    
+    if (confirm(`선택한 ${checkboxes.length}개의 기록을 삭제하시겠습니까?`)) {
+        const idsToDelete = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        let history = JSON.parse(localStorage.getItem('actsHistory') || '[]');
+        history = history.filter(item => !idsToDelete.includes(item.id));
+        localStorage.setItem('actsHistory', JSON.stringify(history));
+        
+        // Reset "Select All" checkbox
+        const selectAllCb = document.getElementById('selectAllHistory');
+        if (selectAllCb) selectAllCb.checked = false;
+        
+        updateFilterDateDropdown();
+        renderHistory();
+    }
 }
 
 function loadState(id) {
