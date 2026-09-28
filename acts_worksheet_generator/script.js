@@ -680,23 +680,39 @@ ${questions.join('\n')}
 ]
 `;
         
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: promptText
+        let data;
+        let maxRetries = 3;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: promptText
+                        }]
                     }]
-                }]
-            })
-        });
+                })
+            });
 
-        const data = await response.json();
-        if (data.error) {
-            throw new Error(data.error.message);
+            data = await response.json();
+            
+            if (data.error && data.error.message.includes("high demand")) {
+                if (attempt < maxRetries) {
+                    console.warn(`[AI 정답 생성] 트래픽 지연으로 재시도합니다. (${attempt}/${maxRetries})`);
+                    aiBtn.innerHTML = `⏳ 서버 혼잡, 재시도 중... (${attempt}/${maxRetries-1})`;
+                    await new Promise(resolve => setTimeout(resolve, 3000 * attempt));
+                    continue;
+                }
+            }
+            
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+            
+            break;
         }
         
         const rawText = data.candidates[0].content.parts[0].text;
