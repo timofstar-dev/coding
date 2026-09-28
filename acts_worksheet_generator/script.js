@@ -404,11 +404,49 @@ function renderWorksheetUI(state) {
     }
     document.getElementById('ws-confusing-words').innerHTML = confusingHtml;
 
+    // 성경의 옛날 띄어쓰기 표기를 현대 맞춤법으로 변환하는 함수
+    function applyModernSpacing(text) {
+        let result = text;
+        const rules = [
+            { regex: /그 때에/g, replace: '그때에' },
+            { regex: /그 때/g, replace: '그때' },
+            { regex: /이 때에/g, replace: '이때에' },
+            { regex: /이 때/g, replace: '이때' },
+            { regex: /저 때에/g, replace: '저때에' },
+            { regex: /저 때/g, replace: '저때' },
+            { regex: /그 곳/g, replace: '그곳' },
+            { regex: /이 곳/g, replace: '이곳' },
+            { regex: /저 곳/g, replace: '저곳' },
+            { regex: /그 날/g, replace: '그날' },
+            { regex: /이 날/g, replace: '이날' },
+            { regex: /저 날/g, replace: '저날' },
+            { regex: /아무 것도/g, replace: '아무것도' },
+            { regex: /아무 도/g, replace: '아무도' },
+            { regex: /아무 데/g, replace: '아무데' },
+            { regex: /그 동안/g, replace: '그동안' },
+            { regex: /오랫 동안/g, replace: '오랫동안' },
+            { regex: /한 번/g, replace: '한번' }, 
+            { regex: /다 같이/g, replace: '다같이' },
+            { regex: /큰 소리/g, replace: '큰소리' },
+            { regex: /본 래/g, replace: '본래' },
+            { regex: /할 수록/g, replace: '할수록' },
+            { regex: /그 중/g, replace: '그중' },
+            { regex: /이 중/g, replace: '이중' }
+        ];
+        rules.forEach(rule => {
+            result = result.replace(rule.regex, rule.replace);
+        });
+        // '째' 앞 띄어쓰기 제거 (예: 첫 째 -> 첫째)
+        result = result.replace(/([첫둘셋넷다여일여아열]) 째/g, '$1째');
+        return result;
+    }
+
     // 3. 띄어쓰기 연습
     let spacingHtml = '';
     state.spacingVerses.forEach((v, index) => {
-        const noSpaceText = v.text.replace(/\s+/g, '');
-        const answerText = v.text.replace(/ /g, ' <span style="color:#e63946;">v</span> ');
+        const modernText = applyModernSpacing(v.text);
+        const noSpaceText = modernText.replace(/\s+/g, '');
+        const answerText = modernText.replace(/ /g, ' <span style="color:#e63946;">v</span> ');
         
         spacingHtml += `
             <div style="margin-bottom: 20px;">
