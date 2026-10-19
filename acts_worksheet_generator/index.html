@@ -13,6 +13,14 @@
         
         <form id="generatorForm">
             <div class="form-group">
+                <label for="templateType">활동지 양식 선택</label>
+                <select id="templateType" onchange="handleTemplateChange()" style="font-weight: bold; background-color: #eff6ff; border-color: #3b82f6;">
+                    <option value="sein_essay" selected>🌟 [세인 5단계 심화 논술] 전체파악·절별요약·핵심찾기·맞춤법·6하원칙 (신규 PDF 양식)</option>
+                    <option value="basic_grammar">📘 [기초 문법·띄어쓰기형] 헷갈리는 우리말·띄어쓰기·기초문법 (기존 양식)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="date">날짜</label>
                 <input type="date" id="date" required>
             </div>
@@ -21,24 +29,45 @@
                 <label for="grade">학년군</label>
                 <select id="grade" required>
                     <option value="12">초등 1~2학년군</option>
-                    <option value="34">초등 3~4학년군</option>
+                    <option value="34" selected>초등 3~4학년군</option>
                     <option value="56">초등 5~6학년군</option>
                 </select>
             </div>
-            
-            <div class="form-group">
-                <label>1. 헷갈리는 우리말 선택 (3개 선택)</label>
-                <div id="confusingWordsCheckboxes" class="checkbox-group" style="max-height: 180px; overflow-y: auto; border: 1px solid #cbd5e1; padding: 10px; border-radius: 5px; background-color: #f8fafc;">
-                    <!-- JS로 동적 생성 -->
-                </div>
-                <p id="checkbox-warning" style="color: #e63946; font-size: 14px; margin-top: 5px; display: none;">※ 정확히 3개를 선택해 주세요.</p>
-            </div>
 
-            <div class="form-group">
-                <label for="grammarType">3. 글쓰기 기초 유형 선택</label>
-                <select id="grammarType" required>
-                    <!-- JS로 동적 생성 -->
-                </select>
+            <!-- 세인 심화 논술 전용 옵션 -->
+            <div id="seinOptionsGroup">
+                <div class="form-group">
+                    <label for="modernBibleLabel">현대어 번역 표기명</label>
+                    <select id="modernBibleLabel">
+                        <option value="현대인의성경" selected>현대인의성경 (PDF 기본 표기)</option>
+                        <option value="쉬운성경">쉬운성경</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="spellingSetType">활동 4. 맞춤법 연습문제 세트</label>
+                    <select id="spellingSetType">
+                        <option value="standard" selected>세인 표준 7문항 (며칠, 되/돼, 안/않, 않았다, 나았다, 어떡해, 띄어쓰기)</option>
+                        <option value="random">다양한 맞춤법 랜덤 7문항 (맞춤법 풀 기반)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 기존 양식 전용 옵션 (기본 숨김) -->
+            <div id="basicOptionsGroup" style="display: none;">
+                <div class="form-group">
+                    <label>1. 헷갈리는 우리말 선택 (3개 선택)</label>
+                    <div id="confusingWordsCheckboxes" class="checkbox-group" style="max-height: 180px; overflow-y: auto; border: 1px solid #cbd5e1; padding: 10px; border-radius: 5px; background-color: #f8fafc;">
+                        <!-- JS로 동적 생성 -->
+                    </div>
+                    <p id="checkbox-warning" style="color: #e63946; font-size: 14px; margin-top: 5px; display: none;">※ 정확히 3개를 선택해 주세요.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="grammarType">3. 글쓰기 기초 유형 선택</label>
+                    <select id="grammarType">
+                        <!-- JS로 동적 생성 -->
+                    </select>
+                </div>
             </div>
             
             <div class="form-group">
@@ -58,7 +87,7 @@
                 </div>
             </div>
             
-            <button type="submit" class="btn">활동지 새롭게 생성하기</button>
+            <button type="submit" class="btn" style="font-size: 19px; padding: 14px; font-weight: bold;">활동지 새롭게 생성하기</button>
         </form>
 
         <!-- 출제 기록 토글 버튼 -->
@@ -102,55 +131,22 @@
 
     <!-- 생성된 활동지가 표시될 영역 -->
     <div id="worksheetArea" class="worksheet-container" style="display: none;">
-        <div class="worksheet-header">
-            <h2 id="ws-main-title">사도행전 성경적 세계관 논술 활동지</h2>
-            <div class="worksheet-info">
-                <span>날짜: <span id="ws-date"></span></span>
-                <span>이름: ________________</span>
-            </div>
-            <div class="worksheet-passage">
-                <strong>오늘의 진도: 사도행전 <span id="ws-passage"></span></strong>
-            </div>
+        <!-- 상단 빠른 인쇄 버튼 모음 -->
+        <div class="no-print print-btn-container" style="margin-top: 0; margin-bottom: 25px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button onclick="window.print()" class="btn" style="flex: 1; min-width: 180px;">🖨️ 학생용 활동지 인쇄</button>
+            <button onclick="printAnswers()" class="btn" style="flex: 1; min-width: 180px; background-color: #dc2626;">✏️ 교사용 답안 인쇄</button>
+            <button type="button" id="aiAnswerBtn" onclick="generateAIAnswers()" class="btn" style="flex: 1; min-width: 200px; background-color: #4f46e5;">✨ AI 정답 자동 생성</button>
         </div>
 
-        <div class="worksheet-body">
-            <div class="section passage-comparison">
-                <h3>0. 오늘의 말씀 읽기</h3>
-                <div class="comparison-container" style="display: flex; gap: 20px; font-size: 13px;">
-                    <div style="flex: 1; border: 1px solid #cbd5e1; padding: 15px; border-radius: 5px; background: #fff;">
-                        <h4 style="margin-top:0; color:#4a6fa5; text-align:center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">개역개정</h4>
-                        <div id="ws-passage-rkv" style="line-height: 1.8;"></div>
-                    </div>
-                    <div style="flex: 1; border: 1px solid #cbd5e1; padding: 15px; border-radius: 5px; background: #fff;">
-                        <h4 style="margin-top:0; color:#4a6fa5; text-align:center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">쉬운성경</h4>
-                        <div id="ws-passage-erv" style="line-height: 1.8;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section">
-                <h3>1. 헷갈리는 우리말 바로쓰기</h3>
-                <p class="instruction">설명을 읽고 올바른 우리말 사용법을 익혀보세요.</p>
-                <div id="ws-confusing-words" class="activity-box"></div>
-            </div>
-
-            <div class="section">
-                <h3>2. 띄어쓰기 연습</h3>
-                <p class="instruction">아래 글을 읽고 띄어 써야 할 곳에 'v' 표시를 해보세요.</p>
-                <div id="ws-spacing" class="activity-box spacing-box"></div>
-            </div>
-
-            <div class="section">
-                <h3 id="grammar-title">3. 글쓰기 기초 문법</h3>
-                <p id="grammar-instruction" class="instruction"></p>
-                <div id="ws-grammar" class="activity-box"></div>
-            </div>
+        <div id="worksheetContent">
+            <!-- JS로 동적 렌더링 (세인 5단계 심화 논술 또는 기존 기초 문법형) -->
         </div>
         
-        <div class="no-print print-btn-container" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-            <button onclick="window.print()" class="btn" style="flex: 1; min-width: 200px;">학생용 활동지 인쇄</button>
-            <button onclick="printAnswers()" class="btn" style="flex: 1; min-width: 200px; background-color: #e63946;">교사용 답안 인쇄</button>
-            <button type="button" id="aiAnswerBtn" onclick="generateAIAnswers()" class="btn" style="flex: 1; min-width: 200px; background-color: #6366f1;">✨ AI 정답 자동 생성</button>
+        <!-- 하단 인쇄 버튼 모음 -->
+        <div class="no-print print-btn-container" style="margin-top: 30px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button onclick="window.print()" class="btn" style="flex: 1; min-width: 180px;">🖨️ 학생용 활동지 인쇄</button>
+            <button onclick="printAnswers()" class="btn" style="flex: 1; min-width: 180px; background-color: #dc2626;">✏️ 교사용 답안 인쇄</button>
+            <button type="button" id="aiAnswerBtnBottom" onclick="generateAIAnswers()" class="btn" style="flex: 1; min-width: 200px; background-color: #4f46e5;">✨ AI 정답 자동 생성</button>
         </div>
     </div>
 

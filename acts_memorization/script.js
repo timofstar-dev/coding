@@ -7,35 +7,70 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUtterance = null;
     let playingVerseId = null;
 
-    processBtn.addEventListener('click', async () => {
-        const file = pdfUpload.files[0];
-        if (!file) {
-            alert('Please select a PDF file first.');
-            return;
+    // --- Helper Utilities for DOM & Geometry ---
+    function getEventElement(target) {
+        if (!target) return null;
+        return target.nodeType === Node.TEXT_NODE ? target.parentElement : target;
+    }
+
+    function findClosestWordInVerse(verseTextEl, clientX, clientY) {
+        if (!verseTextEl) return null;
+        const words = Array.from(verseTextEl.querySelectorAll('.word'));
+        if (words.length === 0) return null;
+
+        let closestWord = null;
+        let minDistance = Infinity;
+
+        for (const w of words) {
+            const rect = w.getBoundingClientRect();
+            const dx = clientX < rect.left ? rect.left - clientX : (clientX > rect.right ? clientX - rect.right : 0);
+            const dy = clientY < rect.top ? rect.top - clientY : (clientY > rect.bottom ? clientY - rect.bottom : 0);
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestWord = w;
+            }
         }
 
-        statusEl.classList.remove('hidden');
-        statusEl.textContent = 'Extracting text...';
-        processBtn.disabled = true;
-
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const text = await extractTextFromPDF(arrayBuffer);
-            
-            statusEl.textContent = 'Processing verses...';
-            const verses = parseVerses(text);
-            
-            renderVerses(verses);
-            statusEl.textContent = 'Done!';
-            setTimeout(() => statusEl.classList.add('hidden'), 2000);
-        } catch (error) {
-            console.error('Error processing PDF:', error);
-            statusEl.textContent = 'Error processing PDF. Check console.';
-            statusEl.classList.add('text-red-500');
-        } finally {
-            processBtn.disabled = false;
+        if (minDistance < 80) {
+            return closestWord;
         }
-    });
+        return null;
+    }
+
+    // --- PDF Upload and Processing ---
+    if (processBtn && pdfUpload) {
+        processBtn.addEventListener('click', async () => {
+            const file = pdfUpload.files[0];
+            if (!file) {
+                alert('Please select a PDF file first.');
+                return;
+            }
+
+            statusEl.classList.remove('hidden');
+            statusEl.textContent = 'Extracting text...';
+            processBtn.disabled = true;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const text = await extractTextFromPDF(arrayBuffer);
+                
+                statusEl.textContent = 'Processing verses...';
+                const verses = parseVerses(text);
+                
+                renderVerses(verses);
+                statusEl.textContent = 'Done!';
+                setTimeout(() => statusEl.classList.add('hidden'), 2000);
+            } catch (error) {
+                console.error('Error processing PDF:', error);
+                statusEl.textContent = 'Error processing PDF. Check console.';
+                statusEl.classList.add('text-red-500');
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+    }
 
     async function extractTextFromPDF(arrayBuffer) {
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -97,15 +132,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return segments;
     }
 
+    // Improved word regex supporting apostrophes, contractions (don't, apostles', God's)
+    const WORD_REGEX = /[a-zA-Z0-9가-힣]+(?:['’][a-zA-Z0-9가-힣]*)?/g;
+
     function formatTextWithBreaks(text) {
         let result = '';
         const breakWords = ['and', 'but', 'so', 'because', 'who', 'which', 'that', 'for', 'if', 'when'];
-        const wordRegex = /[a-zA-Z0-9가-힣]+/g;
         
         let lastIndex = 0;
         let match;
         
-        while ((match = wordRegex.exec(text)) !== null) {
+        WORD_REGEX.lastIndex = 0;
+        while ((match = WORD_REGEX.exec(text)) !== null) {
             let nonWord = text.substring(lastIndex, match.index);
             nonWord = nonWord.replace(/([,;:])(\s)/g, '$1<span class="break-point"></span>$2');
             
@@ -120,9 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             result += nonWord;
-            result += `<span class="word cursor-pointer hover:text-indigo-600 transition-colors" data-start="${startIdx}" data-end="${endIdx}">${word}</span>`;
+            result += `<span class="word" data-start="${startIdx}" data-end="${endIdx}">${word}</span>`;
             
-            lastIndex = wordRegex.lastIndex;
+            lastIndex = WORD_REGEX.lastIndex;
         }
         
         let tail = text.substring(lastIndex);
@@ -142,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return spoken;
     }
 
+    // --- Global Controls ---
     const globalSpeedSelect = document.getElementById('global-speed');
     if (globalSpeedSelect) {
         globalSpeedSelect.addEventListener('change', (e) => {
@@ -208,7 +247,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (playSelectedBtn) {
         playSelectedBtn.addEventListener('click', () => {
             const checkedBoxes = Array.from(document.querySelectorAll('.verse-checkbox:checked'));
-            if (checkedBoxes.length === 0) return;
+            if (checkedBoxes.length === 0) {
+                alert('Please select at least one verse using the checkboxes.');
+                return;
+            }
             
             selectedQueue = checkedBoxes.map(cb => cb.value);
             currentQueueIndex = 0;
@@ -249,44 +291,395 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    document.addEventListener('selectionchange', () => {
-        const selection = window.getSelection();
-        if (selection.isCollapsed) return;
-        
-        if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const container = range.commonAncestorContainer;
-            const parentEl = container.nodeType === 1 ? container : container.parentElement;
+    // --- Floating Quick Action Bar ---
+    let floatingBar = document.getElementById('floating-selection-bar');
+    if (!floatingBar) {
+        floatingBar = document.createElement('div');
+        floatingBar.id = 'floating-selection-bar';
+        floatingBar.className = 'floating-action-bar hidden';
+        floatingBar.innerHTML = `
+            <span class="floating-info text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200"></span>
+            <button class="floating-play-btn bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 shadow-sm transition">
+                <i class="fa-solid fa-play text-[10px]"></i> 재생
+            </button>
+            <button class="floating-loop-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 transition">
+                <i class="fa-solid fa-repeat text-[10px]"></i> 구간 반복
+            </button>
+            <button class="floating-clear-btn text-gray-400 hover:text-gray-600 px-1 py-0.5 text-xs transition" title="선택 해제">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        `;
+        document.body.appendChild(floatingBar);
+    }
+
+    let activeSelectedVerseDiv = null;
+
+    floatingBar.querySelector('.floating-play-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (activeSelectedVerseDiv) {
+            const playBtn = activeSelectedVerseDiv.querySelector('.play-btn');
+            if (playBtn) playBtn.click();
+        }
+    });
+
+    floatingBar.querySelector('.floating-loop-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (activeSelectedVerseDiv) {
+            const loopBtn = activeSelectedVerseDiv.querySelector('.loop-btn');
+            if (loopBtn) {
+                loopBtn.setAttribute('data-loop', 'true');
+                loopBtn.classList.replace('bg-gray-200', 'bg-indigo-100');
+                loopBtn.classList.replace('text-gray-600', 'text-indigo-700');
+            }
+            const playBtn = activeSelectedVerseDiv.querySelector('.play-btn');
+            if (playBtn) playBtn.click();
+        }
+    });
+
+    floatingBar.querySelector('.floating-clear-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (activeSelectedVerseDiv) {
+            clearVerseSelection(activeSelectedVerseDiv);
+        } else {
+            hideFloatingBar();
+        }
+    });
+
+    function showFloatingBar(verseDiv, selectedWords) {
+        if (!selectedWords || selectedWords.length === 0) {
+            hideFloatingBar();
+            return;
+        }
+
+        activeSelectedVerseDiv = verseDiv;
+
+        let minLeft = Infinity;
+        let maxRight = -Infinity;
+        let minTop = Infinity;
+
+        for (const w of selectedWords) {
+            const r = w.getBoundingClientRect();
+            if (r.left < minLeft) minLeft = r.left;
+            if (r.right > maxRight) maxRight = r.right;
+            if (r.top < minTop) minTop = r.top;
+        }
+
+        const centerX = (minLeft + maxRight) / 2 + window.scrollX;
+        const topY = minTop + window.scrollY;
+
+        const infoSpan = floatingBar.querySelector('.floating-info');
+        infoSpan.textContent = `${selectedWords.length}단어 선택됨`;
+
+        floatingBar.style.left = `${centerX}px`;
+        floatingBar.style.top = `${topY}px`;
+
+        if (minTop < 65) {
+            floatingBar.style.transform = 'translate(-50%, calc(100% + 15px))';
+        } else {
+            floatingBar.style.transform = 'translate(-50%, -100%) translateY(-10px)';
+        }
+
+        floatingBar.classList.remove('hidden');
+    }
+
+    function hideFloatingBar() {
+        floatingBar.classList.add('hidden');
+        activeSelectedVerseDiv = null;
+    }
+
+    // --- Selection and Range State Management ---
+    function setVerseWordSelection(verseDiv, startWordEl, endWordEl, showBar = true) {
+        if (!verseDiv || !startWordEl || !endWordEl) return;
+
+        // Deselect other verses
+        document.querySelectorAll('[id^="verse-"]').forEach(otherVerse => {
+            if (otherVerse !== verseDiv) {
+                otherVerse.querySelectorAll('.word.word-selected').forEach(w => w.classList.remove('word-selected'));
+                delete otherVerse.dataset.resumeStart;
+                delete otherVerse.dataset.resumeEnd;
+                updateVerseBadge(otherVerse);
+            }
+        });
+
+        const allWords = Array.from(verseDiv.querySelectorAll('.verse-text .word'));
+        const idx1 = allWords.indexOf(startWordEl);
+        const idx2 = allWords.indexOf(endWordEl);
+
+        if (idx1 === -1 || idx2 === -1) return;
+
+        const minIdx = Math.min(idx1, idx2);
+        const maxIdx = Math.max(idx1, idx2);
+
+        const selectedWords = [];
+        allWords.forEach((wordEl, idx) => {
+            if (idx >= minIdx && idx <= maxIdx) {
+                wordEl.classList.add('word-selected');
+                selectedWords.push(wordEl);
+            } else {
+                wordEl.classList.remove('word-selected');
+            }
+        });
+
+        verseDiv.dataset.resumeStart = allWords[minIdx].dataset.start;
+        if (minIdx === maxIdx) {
+            delete verseDiv.dataset.resumeEnd;
+        } else {
+            verseDiv.dataset.resumeEnd = allWords[maxIdx].dataset.end;
+        }
+
+        updateVerseBadge(verseDiv);
+
+        if (showBar && selectedWords.length > 1) {
+            showFloatingBar(verseDiv, selectedWords);
+        } else if (selectedWords.length <= 1) {
+            hideFloatingBar();
+        }
+    }
+
+    function clearVerseSelection(verseDiv) {
+        if (!verseDiv) return;
+        verseDiv.querySelectorAll('.word.word-selected').forEach(w => w.classList.remove('word-selected'));
+        delete verseDiv.dataset.resumeStart;
+        delete verseDiv.dataset.resumeEnd;
+        updateVerseBadge(verseDiv);
+        hideFloatingBar();
+    }
+
+    function updateVerseBadge(verseDiv) {
+        const badge = verseDiv.querySelector('.verse-range-badge');
+        if (!badge) return;
+
+        const selectedWords = Array.from(verseDiv.querySelectorAll('.word.word-selected'));
+        if (selectedWords.length > 1) {
+            const previewText = selectedWords.length <= 4 
+                ? selectedWords.map(w => w.textContent).join(' ')
+                : `${selectedWords[0].textContent} ... ${selectedWords[selectedWords.length - 1].textContent}`;
             
-            const closestVerseText = parentEl.closest('.verse-text');
-            if (closestVerseText) {
-                const verseDiv = closestVerseText.closest('[id^="verse-"]');
-                if (verseDiv) {
-                    const wordsInVerse = Array.from(closestVerseText.querySelectorAll('.word'));
-                    const selectedWords = wordsInVerse.filter(word => selection.containsNode(word, true));
-                    
-                    if (selectedWords.length > 0) {
-                        const startWord = selectedWords[0];
-                        const endWord = selectedWords[selectedWords.length - 1];
-                        
-                        verseDiv.dataset.resumeStart = startWord.dataset.start;
-                        verseDiv.dataset.resumeEnd = endWord.dataset.end;
-                        
-                        verseDiv.querySelectorAll('.word').forEach(el => {
-                            el.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
-                        });
-                        
-                        selectedWords.forEach(w => w.classList.add('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400'));
+            badge.querySelector('.range-words').textContent = `"${previewText}"`;
+            badge.querySelector('.range-count').textContent = selectedWords.length;
+            badge.classList.remove('hidden');
+        } else if (selectedWords.length === 1) {
+            badge.querySelector('.range-words').textContent = `"${selectedWords[0].textContent}" 부터 끝까지`;
+            badge.querySelector('.range-count').textContent = '1';
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+
+    // --- Interactive Drag-Selection Engine ---
+    let isMouseDown = false;
+    let mouseStartWord = null;
+    let mouseStartPos = { x: 0, y: 0 };
+    let isDraggingWords = false;
+    let activeDragVerseDiv = null;
+    let lastClickedWord = null;
+    let lastClickedVerseDiv = null;
+    let dragJustCompleted = false;
+    let dragCompletedTimer = null;
+
+    // 1. Mouse Drag
+    document.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // Only primary button
+
+        const target = getEventElement(e.target);
+        if (!target) return;
+
+        let word = target.closest('.word');
+        const verseText = target.closest('.verse-text');
+
+        // If clicked in whitespace or punctuation inside verse-text, find the closest word
+        if (!word && verseText) {
+            word = findClosestWordInVerse(verseText, e.clientX, e.clientY);
+        }
+
+        if (word) {
+            const verse = word.closest('[id^="verse-"]');
+            if (verse) {
+                isMouseDown = true;
+                mouseStartWord = word;
+                mouseStartPos = { x: e.clientX, y: e.clientY };
+                isDraggingWords = false;
+                activeDragVerseDiv = verse;
+            }
+        } else {
+            const isFloatingBar = target.closest('#floating-selection-bar');
+            const isBadge = target.closest('.verse-range-badge');
+            if (!isFloatingBar && !isBadge && !verseText) {
+                hideFloatingBar();
+            }
+        }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isMouseDown || !activeDragVerseDiv || !mouseStartWord) return;
+
+        const dist = Math.hypot(e.clientX - mouseStartPos.x, e.clientY - mouseStartPos.y);
+        if (dist > 5) {
+            isDraggingWords = true;
+            const elementUnderCursor = getEventElement(document.elementFromPoint(e.clientX, e.clientY));
+            let currentWord = elementUnderCursor?.closest('.word');
+            
+            // If cursor is between words or in line gap, find closest word in the verse
+            if (!currentWord && activeDragVerseDiv) {
+                const verseText = activeDragVerseDiv.querySelector('.verse-text');
+                currentWord = findClosestWordInVerse(verseText, e.clientX, e.clientY);
+            }
+
+            if (currentWord) {
+                if (currentWord.closest('[id^="verse-"]') === activeDragVerseDiv) {
+                    setVerseWordSelection(activeDragVerseDiv, mouseStartWord, currentWord, false);
+                } else {
+                    // Clamping if dragged into adjacent verse
+                    const words = Array.from(activeDragVerseDiv.querySelectorAll('.verse-text .word'));
+                    if (words.length > 0) {
+                        const curIdx = parseInt(activeDragVerseDiv.id.replace('verse-', ''));
+                        const otherVerse = currentWord.closest('[id^="verse-"]');
+                        const otherIdx = otherVerse ? parseInt(otherVerse.id.replace('verse-', '')) : -1;
+                        if (otherIdx > curIdx) {
+                            setVerseWordSelection(activeDragVerseDiv, mouseStartWord, words[words.length - 1], false);
+                        } else if (otherIdx >= 0 && otherIdx < curIdx) {
+                            setVerseWordSelection(activeDragVerseDiv, mouseStartWord, words[0], false);
+                        }
                     }
                 }
             }
         }
     });
 
+    document.addEventListener('mouseup', (e) => {
+        if (isMouseDown) {
+            if (isDraggingWords && activeDragVerseDiv) {
+                dragJustCompleted = true;
+                if (dragCompletedTimer) clearTimeout(dragCompletedTimer);
+                dragCompletedTimer = setTimeout(() => {
+                    dragJustCompleted = false;
+                }, 350);
+
+                const selected = Array.from(activeDragVerseDiv.querySelectorAll('.word.word-selected'));
+                if (selected.length > 1) {
+                    showFloatingBar(activeDragVerseDiv, selected);
+                } else if (selected.length === 1) {
+                    hideFloatingBar();
+                }
+
+                // Clear native browser blue selection so our custom highlight is crisp
+                window.getSelection()?.removeAllRanges();
+            }
+
+            isMouseDown = false;
+            isDraggingWords = false;
+            activeDragVerseDiv = null;
+            mouseStartWord = null;
+        }
+    });
+
+    // 2. Touch Drag / Slide for Mobile & Tablets
+    let touchStartWord = null;
+    let touchStartPos = { x: 0, y: 0 };
+    let isTouchDragging = false;
+    let touchVerseDiv = null;
+
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        const target = getEventElement(touch.target);
+        if (!target) return;
+
+        let word = target.closest('.word');
+        const verseText = target.closest('.verse-text');
+        if (!word && verseText) {
+            word = findClosestWordInVerse(verseText, touch.clientX, touch.clientY);
+        }
+
+        if (word) {
+            touchStartWord = word;
+            touchStartPos = { x: touch.clientX, y: touch.clientY };
+            isTouchDragging = false;
+            touchVerseDiv = word.closest('[id^="verse-"]');
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!touchStartWord || !touchVerseDiv) return;
+        const touch = e.touches[0];
+        const dist = Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y);
+
+        if (dist > 8) {
+            isTouchDragging = true;
+            if (e.cancelable) e.preventDefault();
+
+            const elem = getEventElement(document.elementFromPoint(touch.clientX, touch.clientY));
+            let currentWord = elem?.closest('.word');
+            if (!currentWord && touchVerseDiv) {
+                const verseText = touchVerseDiv.querySelector('.verse-text');
+                currentWord = findClosestWordInVerse(verseText, touch.clientX, touch.clientY);
+            }
+
+            if (currentWord && currentWord.closest('[id^="verse-"]') === touchVerseDiv) {
+                setVerseWordSelection(touchVerseDiv, touchStartWord, currentWord, false);
+            }
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+        if (isTouchDragging && touchVerseDiv) {
+            dragJustCompleted = true;
+            if (dragCompletedTimer) clearTimeout(dragCompletedTimer);
+            dragCompletedTimer = setTimeout(() => {
+                dragJustCompleted = false;
+            }, 350);
+
+            const selected = Array.from(touchVerseDiv.querySelectorAll('.word.word-selected'));
+            if (selected.length > 1) {
+                showFloatingBar(touchVerseDiv, selected);
+            }
+            window.getSelection()?.removeAllRanges();
+        }
+
+        touchStartWord = null;
+        touchVerseDiv = null;
+        isTouchDragging = false;
+    });
+
+    // 3. Fallback for native browser text selection (keyboard Shift+Arrow, etc.)
+    document.addEventListener('selectionchange', () => {
+        if (isMouseDown || isTouchDragging) return;
+
+        const selection = window.getSelection();
+        if (selection.isCollapsed || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const parentEl = getEventElement(container);
+        if (!parentEl) return;
+
+        const verseDiv = parentEl.closest('[id^="verse-"]');
+        if (!verseDiv) return;
+
+        const verseText = verseDiv.querySelector('.verse-text');
+        if (!verseText) return;
+
+        const wordsInVerse = Array.from(verseText.querySelectorAll('.word'));
+        const selectedWords = wordsInVerse.filter(word => {
+            try {
+                return range.intersectsNode(word);
+            } catch (err) {
+                return selection.containsNode(word, true);
+            }
+        });
+
+        if (selectedWords.length > 0) {
+            setVerseWordSelection(verseDiv, selectedWords[0], selectedWords[selectedWords.length - 1], true);
+        }
+    });
+
+    // --- Render Verses ---
     function renderVerses(verses) {
         stopSpeech();
         isPlayingSelected = false;
         selectedQueue = [];
+        hideFloatingBar();
         
         versesContainer.innerHTML = '';
         if (globalToolbar) globalToolbar.classList.add('hidden');
@@ -302,7 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const verseId = `verse-${index}`;
             const verseDiv = document.createElement('div');
             verseDiv.id = verseId;
-            verseDiv.className = 'p-5 rounded-lg border border-gray-200 shadow-sm transition-colors duration-200';
+            verseDiv.className = 'p-5 rounded-lg border border-gray-200 shadow-sm transition-colors duration-200 relative bg-white';
             
             const textHTML = formatTextWithBreaks(verseObj.englishText);
             const spokenText = formatSpokenTextWithPauses(verseObj.englishText); 
@@ -320,15 +713,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 <div class="mb-3 verse-text text-lg font-medium text-gray-800">${textHTML}</div>
+                
+                <!-- Range Selection Status Badge -->
+                <div class="verse-range-badge hidden text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-md flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-1.5 truncate">
+                        <i class="fa-solid fa-scissors text-indigo-500"></i>
+                        <span>선택 구간: <strong class="range-words text-indigo-900 font-semibold truncate"></strong> (<span class="range-count"></span>단어)</span>
+                    </div>
+                    <button class="clear-range-btn text-xs text-indigo-600 hover:text-indigo-900 font-semibold underline shrink-0 ml-2" title="선택을 해제하고 전체 재생 모드로 전환">전체 재생</button>
+                </div>
+
                 ${koreanHTML}
+
                 <div class="mt-4 flex flex-wrap items-center gap-3 bg-gray-50 p-2 rounded border border-gray-200">
-                    <button class="play-btn bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-full w-10 h-10 flex items-center justify-center transition" title="Play">
+                    <button class="play-btn bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-full w-10 h-10 flex items-center justify-center transition shadow-sm" title="Play">
                         <i class="fa-solid fa-play"></i>
                     </button>
-                    <button class="pause-btn bg-yellow-100 text-yellow-700 hover:bg-yellow-200 p-2 rounded-full w-10 h-10 flex items-center justify-center transition hidden" title="Pause">
+                    <button class="pause-btn bg-yellow-100 text-yellow-700 hover:bg-yellow-200 p-2 rounded-full w-10 h-10 flex items-center justify-center transition shadow-sm hidden" title="Pause">
                         <i class="fa-solid fa-pause"></i>
                     </button>
-                    <button class="stop-btn bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-full w-10 h-10 flex items-center justify-center transition" title="Stop">
+                    <button class="stop-btn bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-full w-10 h-10 flex items-center justify-center transition shadow-sm" title="Stop">
                         <i class="fa-solid fa-stop"></i>
                     </button>
                     <button class="loop-btn bg-gray-200 text-gray-600 hover:bg-gray-300 p-2 rounded-full w-10 h-10 flex items-center justify-center transition" title="Toggle Loop" data-loop="false">
@@ -353,25 +757,56 @@ document.addEventListener('DOMContentLoaded', () => {
             const stopBtn = verseDiv.querySelector('.stop-btn');
             const speedSelect = verseDiv.querySelector('.speed-select');
             const loopBtn = verseDiv.querySelector('.loop-btn');
+            const verseTextEl = verseDiv.querySelector('.verse-text');
+            const clearRangeBtn = verseDiv.querySelector('.clear-range-btn');
 
-            // --- Word Selection and A-B Loop Logic ---
+            // Prevent native HTML5 drag-and-drop ghost image
+            verseTextEl.addEventListener('dragstart', (e) => e.preventDefault());
+
+            // Clear Range button in verse toolbar
+            clearRangeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                clearVerseSelection(verseDiv);
+            });
+
+            // --- Click / Shift+Click Handling on Verse ---
             verseDiv.addEventListener('click', (e) => {
-                const selection = window.getSelection();
-                if (!selection.isCollapsed) return;
-                
-                if (e.target.classList.contains('word')) {
-                    const wordStart = parseInt(e.target.dataset.start);
-                    
-                    verseDiv.dataset.resumeStart = wordStart;
-                    delete verseDiv.dataset.resumeEnd;
-                    
-                    verseDiv.querySelectorAll('.word').forEach(el => {
-                        el.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
-                    });
-                    e.target.classList.add('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
-                    
+                const target = getEventElement(e.target);
+                if (!target) return;
+
+                // If this was part of a drag action, ignore click!
+                if (dragJustCompleted || isDraggingWords) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
+
+                const clickDist = Math.hypot(e.clientX - mouseStartPos.x, e.clientY - mouseStartPos.y);
+                if (clickDist > 6) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
+
+                const clickedWord = target.closest('.word');
+
+                // 1. Shift + Click on a word (desktop convenience range selection)
+                if (e.shiftKey && clickedWord && lastClickedWord && lastClickedVerseDiv === verseDiv) {
+                    setVerseWordSelection(verseDiv, lastClickedWord, clickedWord, true);
+                    return;
+                }
+
+                // 2. Single word click
+                if (clickedWord) {
+                    lastClickedWord = clickedWord;
+                    lastClickedVerseDiv = verseDiv;
+
+                    setVerseWordSelection(verseDiv, clickedWord, clickedWord, false);
+                    hideFloatingBar();
+
+                    // Speak single clicked word
                     stopSpeech();
-                    const wordU = new SpeechSynthesisUtterance(e.target.textContent);
+                    const wordU = new SpeechSynthesisUtterance(clickedWord.textContent);
                     const selectedVoiceURI = voiceSelect?.value;
                     if (selectedVoiceURI && availableVoices.length > 0) {
                         const voice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
@@ -379,25 +814,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     wordU.rate = parseFloat(speedSelect.value) * 0.7;
                     window.speechSynthesis.speak(wordU);
-                } else if (e.target.closest('.verse-text')) {
-                     delete verseDiv.dataset.resumeStart;
-                     delete verseDiv.dataset.resumeEnd;
-                     verseDiv.querySelectorAll('.word').forEach(el => {
-                        el.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-b-2', 'border-indigo-400');
-                     });
-                }
-            });
-
-            verseDiv.addEventListener('mouseup', () => {
-                // 데스크탑 환경(마우스 사용)에서만 드래그 완료 후 기본 선택 영역을 해제합니다.
-                // 모바일 환경에서는 선택 핸들을 유지하여 사용자가 범위를 조절할 수 있게 합니다.
-                if (window.matchMedia("(pointer: fine)").matches) {
-                    const selection = window.getSelection();
-                    if (!selection.isCollapsed) {
-                        setTimeout(() => {
-                            selection.removeAllRanges();
-                        }, 10);
-                    }
+                } else if (target.closest('.verse-text') && !clickedWord) {
+                    // Clicked blank space between or around words in verse-text: clear selection!
+                    clearVerseSelection(verseDiv);
                 }
             });
 
@@ -467,6 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
         stopSpeech();
         playingVerseId = verseId;
         const verseEl = document.getElementById(verseId);
+        if (!verseEl) return;
         const verseTextEl = verseEl.querySelector('.verse-text');
         
         verseEl.classList.add('playing');

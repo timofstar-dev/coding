@@ -1,0 +1,4 @@
+.wrangler/
+*.txt
+parse_bible.py
+acts_rkv.json

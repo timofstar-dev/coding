@@ -225,10 +225,171 @@ input[type="date"], select {
     font-size: 15px;
 }
 
+/* ===== 세인 5단계 심화 논술 활동지 전용 스타일 ===== */
+.sein-worksheet {
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', -apple-system, sans-serif;
+    color: #111;
+    background: #fff;
+    line-height: 1.6;
+}
+
+.sein-header-title {
+    text-align: center;
+    font-size: 26px;
+    font-weight: 800;
+    margin-top: 0;
+    margin-bottom: 14px;
+    letter-spacing: 0.5px;
+}
+
+.sein-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+}
+.sein-meta-table th, .sein-meta-table td {
+    border: 1px solid #111;
+    text-align: center;
+    padding: 7px 10px;
+    font-size: 14px;
+}
+.sein-meta-table th {
+    background-color: #fafafa;
+    font-weight: 700;
+    width: 33.33%;
+}
+.sein-meta-table td {
+    height: 32px;
+}
+
+.sein-intro-box {
+    margin-bottom: 22px;
+    font-size: 14.5px;
+    line-height: 1.7;
+}
+.sein-intro-line {
+    margin-bottom: 6px;
+}
+
+.sein-section {
+    margin-bottom: 26px;
+}
+
+.sein-sec-header {
+    font-size: 16.5px;
+    font-weight: 800;
+    margin-top: 18px;
+    margin-bottom: 6px;
+    color: #000;
+}
+.sein-sec-desc {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+/* 세인 기본 테이블 (인쇄/선명도 최적화) */
+.sein-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    background: #fff;
+}
+.sein-table th, .sein-table td {
+    border: 1px solid #222;
+    padding: 8px 10px;
+    font-size: 13.5px;
+    vertical-align: middle;
+}
+.sein-table th {
+    background-color: #f7f7f7;
+    font-weight: 700;
+    text-align: center;
+}
+.sein-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* 세인 박스형 테이블 (제목 + 작성칸) */
+.sein-box-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    background: #fff;
+}
+.sein-box-table th {
+    border: 1px solid #222;
+    background-color: #f7f7f7;
+    text-align: left;
+    padding: 6px 12px;
+    font-size: 13.5px;
+    font-weight: 700;
+}
+.sein-box-table td {
+    border: 1px solid #222;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    vertical-align: top;
+}
+
+/* 세인 팁 & 도우미 박스 */
+.sein-tip-box {
+    background-color: #f8fafc;
+    border-left: 3px solid #64748b;
+    padding: 8px 14px;
+    font-size: 13.5px;
+    margin-top: 6px;
+    margin-bottom: 14px;
+    line-height: 1.6;
+}
+
+/* 세인 체크리스트 */
+.sein-checklist {
+    list-style: none;
+    padding-left: 5px;
+    margin: 8px 0;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+/* 교사용 정답 가이드 (세인 모드) */
+.sein-answer {
+    display: none;
+    color: #dc2626;
+    font-weight: 600;
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin-top: 4px;
+}
+.show-answers .sein-answer {
+    display: block;
+}
+.show-answers .sein-inline-ans {
+    color: #dc2626;
+    font-weight: bold;
+    text-decoration: underline;
+}
+.sein-teacher-key {
+    display: none;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background-color: #fef2f2;
+    border: 1px dashed #ef4444;
+    font-size: 13.5px;
+    color: #b91c1c;
+    border-radius: 4px;
+    font-weight: bold;
+}
+.show-answers .sein-teacher-key {
+    display: block;
+}
+
 /* 인쇄 시 스타일 */
 @media print {
     @page {
-        margin: 0.5cm; /* 브라우저 인쇄 여백 최소화 */
+        margin: 0.6cm 0.8cm; /* 브라우저 인쇄 여백 최소화 */
     }
     body {
         background: white;
@@ -240,9 +401,16 @@ input[type="date"], select {
     }
     .worksheet-container {
         box-shadow: none;
-        padding: 0.5cm; /* 최소 0.5cm 여백 보장 */
+        padding: 0;
         margin: 0;
         max-width: 100%;
-        box-sizing: border-box; /* 패딩 포함 크기 계산 */
+        box-sizing: border-box;
+    }
+    .sein-table tr, .sein-box-table tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    .sein-sec-header {
+        break-after: avoid;
     }
 }
