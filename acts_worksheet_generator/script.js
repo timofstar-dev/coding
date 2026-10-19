@@ -247,6 +247,13 @@ function handleTemplateChange() {
     }
 }
 
+function toggleSpellingOption(checked) {
+    const group = document.getElementById('spellingSetGroup');
+    if (group) {
+        group.style.display = checked ? 'block' : 'none';
+    }
+}
+
 function initConfusingWordsCheckboxes() {
     const container = document.getElementById('confusingWordsCheckboxes');
     if (!container) return;
@@ -359,8 +366,10 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
         }
 
         if (templateType === 'sein_essay') {
-            const modernBibleLabel = document.getElementById('modernBibleLabel').value || '현대인의성경';
-            const spellingSetType = document.getElementById('spellingSetType').value || 'standard';
+            const includeSpellingEl = document.getElementById('includeSpelling');
+            const includeSpelling = includeSpellingEl ? includeSpellingEl.checked : true;
+            const modernBibleLabel = document.getElementById('modernBibleLabel')?.value || '현대인의성경';
+            const spellingSetType = document.getElementById('spellingSetType')?.value || 'standard';
 
             state = {
                 id: Date.now(),
@@ -370,6 +379,7 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
                 chapter: chapter,
                 startVerse: startVerse,
                 endVerse: endVerse,
+                includeSpelling: includeSpelling,
                 modernBibleLabel: modernBibleLabel,
                 spellingSetType: spellingSetType,
                 allVersesERV: versesERV,
@@ -438,23 +448,16 @@ function renderWorksheetUI(state) {
 // 1. [신규] 세인 5단계 심화 논술 활동지 렌더러
 // ==========================================
 function renderSeinWorksheetHtml(state) {
+    const includeSpelling = (state.includeSpelling !== false);
+    const sixWActNum = includeSpelling ? 5 : 4;
+    const seqText = includeSpelling
+        ? '활동 1 전체 파악하기 → 활동 2 한 절씩 요약하기 → 활동 3 핵심 찾기 → 활동 4 맞춤법 찾기 → 활동 5 6 하원칙 요약하기'
+        : '활동 1 전체 파악하기 → 활동 2 한 절씩 요약하기 → 활동 3 핵심 찾기 → 활동 4 6 하원칙 요약하기';
     const modernLabel = state.modernBibleLabel || '현대인의성경';
     const versesERV = state.allVersesERV || [];
     const versesRKV = state.allVersesRKV || [];
     const ai = state.aiAnswers || {};
 
-    // 1) 본문 대조 테이블 행 생성
-    let versesRows = '';
-    versesRKV.forEach((rkv, idx) => {
-        const erv = versesERV[idx] || { text: '' };
-        versesRows += `
-            <tr>
-                <td style="text-align: center; font-weight: bold; width: 45px;">${rkv.num}</td>
-                <td style="line-height: 1.7; padding: 7px 10px;">${rkv.text}</td>
-                <td style="line-height: 1.7; padding: 7px 10px;">${erv.text}</td>
-            </tr>
-        `;
-    });
 
     // 2) 활동 2: 절별 요약 행 생성
     let summaryRows = '';
@@ -497,27 +500,55 @@ function renderSeinWorksheetHtml(state) {
         `;
     }
 
-    // 4) 활동 4: 맞춤법 7문제 HTML 생성
+    // 4) 활동 4: 맞춤법 7문제 HTML 생성 (포함 선택 시)
     let spellingQuestionsHtml = '';
-    const spSet = seinStandardSpelling.questions;
-    spSet.forEach(q => {
-        if (q.isSpacing) {
-            spellingQuestionsHtml += `
-                <div style="margin-bottom: 6px;">
-                    ${q.num}. ${q.text} <span class="sein-inline-ans sein-answer">${q.answer}</span>
-                </div>
-            `;
-        } else {
-            // (몇 일 / 며칠) 처럼 괄호 안의 단어 중 정답에 동그라미/밑줄
-            const parts = q.text.split(new RegExp(`\\(\\s*${q.options[0]}\\s*\\/\\s*${q.options[1]}\\s*\\)`));
-            const formatted = `${parts[0]}( <span class="${q.answer === q.options[0] ? 'sein-inline-ans' : ''}">${q.options[0]}</span> / <span class="${q.answer === q.options[1] ? 'sein-inline-ans' : ''}">${q.options[1]}</span> )${parts[1] || ''}`;
-            spellingQuestionsHtml += `
-                <div style="margin-bottom: 6px;">
-                    ${q.num}. ${formatted}
-                </div>
-            `;
-        }
-    });
+    let spellingSectionHtml = '';
+    if (includeSpelling) {
+        const spSet = seinStandardSpelling.questions;
+        spSet.forEach(q => {
+            if (q.isSpacing) {
+                spellingQuestionsHtml += `
+                    <div style="margin-bottom: 6px;">
+                        ${q.num}. ${q.text} <span class="sein-inline-ans sein-answer">${q.answer}</span>
+                    </div>
+                `;
+            } else {
+                // (몇 일 / 며칠) 처럼 괄호 안의 단어 중 정답에 동그라미/밑줄
+                const parts = q.text.split(new RegExp(`\\(\\s*${q.options[0]}\\s*\\/\\s*${q.options[1]}\\s*\\)`));
+                const formatted = `${parts[0]}( <span class="${q.answer === q.options[0] ? 'sein-inline-ans' : ''}">${q.options[0]}</span> / <span class="${q.answer === q.options[1] ? 'sein-inline-ans' : ''}">${q.options[1]}</span> )${parts[1] || ''}`;
+                spellingQuestionsHtml += `
+                    <div style="margin-bottom: 6px;">
+                        ${q.num}. ${formatted}
+                    </div>
+                `;
+            }
+        });
+
+        spellingSectionHtml = `
+        <!-- 활동 4. 중요하거나 헷갈리는 맞춤법 찾기 -->
+        <div class="sein-section">
+            <div class="sein-sec-header">활동 4. 중요하거나 헷갈리는 맞춤법 찾기</div>
+
+            <div style="margin-bottom: 8px; font-size: 14.5px;">
+                <strong>맞춤법 연습 문제</strong> — 알맞은 낱말에 ○표 하고 바르게 띄어 써 보세요.
+            </div>
+            <div class="sein-spelling-questions" style="padding-left: 6px; line-height: 2.1; font-size: 14.5px;">
+                ${spellingQuestionsHtml}
+            </div>
+
+            <div class="sein-tip-box" style="margin-top: 14px;">
+                <strong>맞춤법 꿀팁</strong>
+                <ul style="margin: 4px 0 0 18px; padding: 0;">
+                    ${seinStandardSpelling.tips.map(t => `<li>${t}</li>`).join('')}
+                </ul>
+            </div>
+
+            <div class="sein-teacher-key">
+                교사용 정답: ${seinStandardSpelling.answerGuide}
+            </div>
+        </div>
+        `;
+    }
 
     return `
     <div class="sein-worksheet">
@@ -546,25 +577,7 @@ function renderSeinWorksheetHtml(state) {
         <div class="sein-intro-box">
             <div class="sein-intro-line"><strong>오늘의 글:</strong> 사도행전 ${state.chapter} 장 ${state.startVerse}~${state.endVerse} 절 (개역개정)</div>
             <div class="sein-intro-line"><strong>오늘의 목표:</strong> 긴 글을 차근차근 읽고, 내 말로 정리해서 논술의 기초 체력을 키워요.</div>
-            <div class="sein-intro-line"><strong>수업 순서:</strong> 활동 1 전체 파악하기 → 활동 2 한 절씩 요약하기 → 활동 3 핵심 찾기 → 활동 4 맞춤법 찾기 → 활동 5 6 하원칙 요약하기</div>
-        </div>
-
-        <!-- 본문 읽기 -->
-        <div class="sein-section">
-            <div class="sein-sec-header">본문 읽기 (사도행전 ${state.chapter} 장 ${state.startVerse}~${state.endVerse} 절)</div>
-            <div class="sein-sec-desc">왼쪽은 개역개정, 오른쪽은 ${modernLabel}이에요. 두 번역을 나란히 읽으며 낱말과 말투가 어떻게 다른지 비교해 보세요.</div>
-            <table class="sein-table">
-                <thead>
-                    <tr>
-                        <th style="width: 48px; text-align: center;">절</th>
-                        <th style="width: 48%; text-align: left; padding-left: 12px;">개역개정</th>
-                        <th style="width: 48%; text-align: left; padding-left: 12px;">${modernLabel}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${versesRows}
-                </tbody>
-            </table>
+            <div class="sein-intro-line"><strong>수업 순서:</strong> ${seqText}</div>
         </div>
 
         <!-- 활동 1. 전체 문장 파악하기 -->
@@ -686,7 +699,7 @@ function renderSeinWorksheetHtml(state) {
             <div class="sein-sec-desc">핵심 단어는 빼면 글의 뜻이 달라지는 낱말, 핵심 문장은 글쓴이가 가장 말하고 싶은 문장이에요.</div>
 
             <div style="margin-bottom: 8px; font-size: 14.5px;">
-                <strong>① 핵심 단어 찾기</strong> — 본문에서 가장 중요하다고 생각하는 낱말 3~5 개에 색연필로 동그라미를 치고, 왜 중요한지 써요.
+                <strong>① 핵심 단어 찾기</strong> — 본문에서 가장 중요하다고 생각하는 낱말 3~5개를 표시하고 왜 중요한지 써보세요.
             </div>
             <table class="sein-table" id="sein-keywords-table">
                 <thead>
@@ -744,69 +757,11 @@ function renderSeinWorksheetHtml(state) {
             </div>
         </div>
 
-        <!-- 활동 4. 중요하거나 헷갈리는 맞춤법 찾기 -->
+        ${spellingSectionHtml}
+
+        <!-- 활동 6 하원칙으로 요약하기 -->
         <div class="sein-section">
-            <div class="sein-sec-header">활동 4. 중요하거나 헷갈리는 맞춤법 찾기</div>
-
-            <div style="margin-bottom: 8px; font-size: 14.5px;">
-                <strong>① 연습 문제</strong> — 알맞은 낱말에 ○표 해요.
-            </div>
-            <div class="sein-spelling-questions" style="padding-left: 6px; line-height: 2.1; font-size: 14.5px;">
-                ${spellingQuestionsHtml}
-            </div>
-
-            <div style="margin-bottom: 8px; font-size: 14.5px; margin-top: 18px;">
-                <strong>② 본문에서 찾기</strong> — 본문을 다시 읽고, 맞춤법이나 띄어쓰기가 헷갈리는 낱말 또는 중요한 낱말을 3 개 이상 찾아 적어요. 국어사전이나 인터넷 사전으로 바른 표기를 확인해요.
-            </div>
-            <table class="sein-table">
-                <thead>
-                    <tr>
-                        <th style="width: 22%;">본문 속 낱말</th>
-                        <th style="width: 12%;">절</th>
-                        <th style="width: 33%;">헷갈리는 이유</th>
-                        <th style="width: 33%;">사전으로 확인한 바른 표기·뜻</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td style="height: 32px;">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                    <tr><td style="height: 32px;">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                    <tr><td style="height: 32px;">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-                </tbody>
-            </table>
-
-            <div style="margin-bottom: 8px; font-size: 14.5px; margin-top: 18px;">
-                <strong>③ 옛 말투 바꾸기</strong> — 본문 끝에 "~하니라", "~하더라"처럼 요즘 잘 쓰지 않는 말투가 있어요. 그런 문장을 하나 찾아 요즘 말투로 바꿔 써 보세요.
-            </div>
-            <table class="sein-table">
-                <thead>
-                    <tr>
-                        <th style="width: 50%; text-align: left; padding-left: 12px;">본문 속 문장 (옮겨 쓰기)</th>
-                        <th style="width: 50%; text-align: left; padding-left: 12px;">요즘 말투로 바꾸기</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style="height: 44px;">&nbsp;</td>
-                        <td>&nbsp;</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="sein-tip-box" style="margin-top: 14px;">
-                <strong>맞춤법 꿀팁</strong>
-                <ul style="margin: 4px 0 0 18px; padding: 0;">
-                    ${seinStandardSpelling.tips.map(t => `<li>${t}</li>`).join('')}
-                </ul>
-            </div>
-
-            <div class="sein-teacher-key">
-                교사용 정답: ${seinStandardSpelling.answerGuide}
-            </div>
-        </div>
-
-        <!-- 활동 5. 6 하원칙으로 요약하기 -->
-        <div class="sein-section">
-            <div class="sein-sec-header">활동 5. 6 하원칙으로 요약하기</div>
+            <div class="sein-sec-header">활동 ${sixWActNum}. 6 하원칙으로 요약하기</div>
             <div class="sein-sec-desc">지금까지 찾은 내용을 모아서 6 가지 질문에 답해 보세요. 본문에 답이 직접 나오지 않으면 "본문에 나오지 않음"이라고 써도 좋아요.</div>
 
             <table class="sein-table">
@@ -890,9 +845,32 @@ function renderSeinWorksheetHtml(state) {
                 <li>• &nbsp;☐ &nbsp;글 전체의 흐름을 말할 수 있어요.</li>
                 <li>• &nbsp;☐ &nbsp;각 절을 내 말로 짧게 줄일 수 있어요.</li>
                 <li>• &nbsp;☐ &nbsp;핵심 단어와 핵심 문장을 찾았어요.</li>
-                <li>• &nbsp;☐ &nbsp;헷갈리는 맞춤법을 사전으로 확인했어요.</li>
+                ${includeSpelling ? '<li>• &nbsp;☐ &nbsp;헷갈리는 맞춤법을 확인했어요.</li>' : ''}
                 <li>• &nbsp;☐ &nbsp;6 하원칙으로 글을 정리했어요.</li>
             </ul>
+
+            <!-- 맨 마지막: 어려웠던 부분 (네모 줄칸) -->
+            <div style="margin-top: 22px; margin-bottom: 8px; font-size: 15px; font-weight: bold;">
+                어려웠던 부분
+            </div>
+            <table class="sein-box-table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th style="font-weight: 600; color: #475569; font-size: 13.5px; background-color: #f8fafc;">
+                            오늘 활동을 하면서 이해하기 어려웠던 단어나 내용, 더 궁금한 점을 자유롭게 적어보세요.
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="height: 105px; padding: 0; vertical-align: top;">
+                            <div style="height: 35px; border-bottom: 1px dashed #cbd5e1; box-sizing: border-box;"></div>
+                            <div style="height: 35px; border-bottom: 1px dashed #cbd5e1; box-sizing: border-box;"></div>
+                            <div style="height: 35px; box-sizing: border-box;"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
     `;
@@ -1218,8 +1196,17 @@ function loadState(id) {
         document.getElementById('grade').value = state.grade;
 
         if (templateType === 'sein_essay') {
-            if (state.modernBibleLabel) document.getElementById('modernBibleLabel').value = state.modernBibleLabel;
-            if (state.spellingSetType) document.getElementById('spellingSetType').value = state.spellingSetType;
+            if (document.getElementById('includeSpelling')) {
+                const inc = (state.includeSpelling !== false);
+                document.getElementById('includeSpelling').checked = inc;
+                toggleSpellingOption(inc);
+            }
+            if (state.modernBibleLabel && document.getElementById('modernBibleLabel')) {
+                document.getElementById('modernBibleLabel').value = state.modernBibleLabel;
+            }
+            if (state.spellingSetType && document.getElementById('spellingSetType')) {
+                document.getElementById('spellingSetType').value = state.spellingSetType;
+            }
         } else {
             updateGrammarTypeSelect();
             if (state.qTypeIndex !== undefined) {
