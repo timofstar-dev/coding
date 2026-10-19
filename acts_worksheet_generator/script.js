@@ -553,7 +553,7 @@ function renderSeinWorksheetHtml(state) {
     return `
     <div class="sein-worksheet">
         <!-- 최상단 헤더 타이틀 -->
-        <div class="sein-header-title">${getSeinGradeText(state.grade)}</div>
+        <div class="sein-header-title" id="ws-main-title">성경적 세계관 논술 활동지</div>
 
         <!-- 인적사항 표 (PDF 동일) -->
         <table class="sein-meta-table">
@@ -1017,7 +1017,7 @@ function renderBasicWorksheetHtml(state) {
 
     return `
         <div class="worksheet-header">
-            <h2 id="ws-main-title">사도행전 성경적 세계관 논술 활동지</h2>
+            <h2 id="ws-main-title">성경적 세계관 논술 활동지</h2>
             <div class="worksheet-info">
                 <span>날짜: <span>${state.date}</span></span>
                 <span>이름: ________________</span>
@@ -1068,10 +1068,10 @@ function printAnswers() {
     const wsArea = document.getElementById('worksheetArea');
     wsArea.classList.add('show-answers');
     const mainTitle = document.getElementById('ws-main-title');
-    if (mainTitle) mainTitle.textContent = "사도행전 활동지 [교사용 정답]";
+    if (mainTitle) mainTitle.textContent = "성경적 세계관 논술 활동지 [교사용 정답]";
     window.print();
     wsArea.classList.remove('show-answers');
-    if (mainTitle) mainTitle.textContent = "사도행전 성경적 세계관 논술 활동지";
+    if (mainTitle) mainTitle.textContent = "성경적 세계관 논술 활동지";
 }
 
 // 히스토리 관리
