@@ -863,10 +863,12 @@ function renderSeinWorksheetHtml(state) {
                 </thead>
                 <tbody>
                     <tr>
-                        <td style="height: 105px; padding: 0; vertical-align: top;">
-                            <div style="height: 35px; border-bottom: 1px dashed #cbd5e1; box-sizing: border-box;"></div>
-                            <div style="height: 35px; border-bottom: 1px dashed #cbd5e1; box-sizing: border-box;"></div>
-                            <div style="height: 35px; box-sizing: border-box;"></div>
+                        <td style="height: 170px; padding: 0; vertical-align: top;">
+                            <div style="height: 34px; border-bottom: 1px dashed #cbd5e1; box-sizing: border-box;"></div>
+                            <div style="height: 34px; border-bottom: 1px dashed #cbd5e1; box-sizing: border-box;"></div>
+                            <div style="height: 34px; border-bottom: 1px dashed #cbd5e1; box-sizing: border-box;"></div>
+                            <div style="height: 34px; border-bottom: 1px dashed #cbd5e1; box-sizing: border-box;"></div>
+                            <div style="height: 34px; box-sizing: border-box;"></div>
                         </td>
                     </tr>
                 </tbody>
