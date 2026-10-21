@@ -39,6 +39,49 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
+    // Cache word element lists per verse (words never change after render)
+    const verseWordsCache = new WeakMap();
+    function getVerseWords(verseDiv) {
+        if (!verseDiv) return [];
+        let words = verseWordsCache.get(verseDiv);
+        if (!words) {
+            words = Array.from(verseDiv.querySelectorAll('.verse-text .word'));
+            verseWordsCache.set(verseDiv, words);
+        }
+        return words;
+    }
+
+    // Line-aware hit test used while dragging: always returns a word for a non-empty verse,
+    // so the selection keeps tracking the pointer past line ends, in line gaps, or outside the text block.
+    function findDragTargetWord(verseDiv, clientX, clientY) {
+        const words = getVerseWords(verseDiv);
+        if (words.length === 0) return null;
+
+        const rects = words.map(w => w.getBoundingClientRect());
+        const first = rects[0];
+        const last = rects[rects.length - 1];
+
+        // Well above the text -> start, well below (e.g. into the next verse) -> end
+        if (clientY < first.top - first.height) return words[0];
+        if (clientY > last.bottom + last.height) return words[words.length - 1];
+
+        // Otherwise: nearest line first, then nearest word horizontally on that line
+        let bestIdx = 0;
+        let bestDy = Infinity;
+        let bestDx = Infinity;
+        for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+            const dy = clientY < r.top ? r.top - clientY : (clientY > r.bottom ? clientY - r.bottom : 0);
+            const dx = clientX < r.left ? r.left - clientX : (clientX > r.right ? clientX - r.right : 0);
+            if (dy < bestDy - 1) {
+                bestIdx = i; bestDy = dy; bestDx = dx;
+            } else if (Math.abs(dy - bestDy) <= 1 && dx < bestDx) {
+                bestIdx = i; bestDy = Math.min(dy, bestDy); bestDx = dx;
+            }
+        }
+        return words[bestIdx];
+    }
+
     // --- PDF Upload and Processing ---
     if (processBtn && pdfUpload) {
         processBtn.addEventListener('click', async () => {
@@ -388,36 +431,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Selection and Range State Management ---
+    let selectedVerseDiv = null; // verse that currently holds a word selection
+
     function setVerseWordSelection(verseDiv, startWordEl, endWordEl, showBar = true) {
         if (!verseDiv || !startWordEl || !endWordEl) return;
 
-        // Deselect other verses
-        document.querySelectorAll('[id^="verse-"]').forEach(otherVerse => {
-            if (otherVerse !== verseDiv) {
-                otherVerse.querySelectorAll('.word.word-selected').forEach(w => w.classList.remove('word-selected'));
-                delete otherVerse.dataset.resumeStart;
-                delete otherVerse.dataset.resumeEnd;
-                updateVerseBadge(otherVerse);
-            }
-        });
-
-        const allWords = Array.from(verseDiv.querySelectorAll('.verse-text .word'));
+        const allWords = getVerseWords(verseDiv);
         const idx1 = allWords.indexOf(startWordEl);
         const idx2 = allWords.indexOf(endWordEl);
 
         if (idx1 === -1 || idx2 === -1) return;
+
+        // Deselect the previously selected verse (tracked directly instead of scanning every verse on each drag frame)
+        if (selectedVerseDiv && selectedVerseDiv !== verseDiv) {
+            selectedVerseDiv.querySelectorAll('.word.word-selected').forEach(w => w.classList.remove('word-selected'));
+            delete selectedVerseDiv.dataset.resumeStart;
+            delete selectedVerseDiv.dataset.resumeEnd;
+            updateVerseBadge(selectedVerseDiv);
+        }
+        selectedVerseDiv = verseDiv;
 
         const minIdx = Math.min(idx1, idx2);
         const maxIdx = Math.max(idx1, idx2);
 
         const selectedWords = [];
         allWords.forEach((wordEl, idx) => {
-            if (idx >= minIdx && idx <= maxIdx) {
-                wordEl.classList.add('word-selected');
-                selectedWords.push(wordEl);
-            } else {
-                wordEl.classList.remove('word-selected');
-            }
+            const inRange = idx >= minIdx && idx <= maxIdx;
+            wordEl.classList.toggle('word-selected', inRange);
+            if (inRange) selectedWords.push(wordEl);
         });
 
         verseDiv.dataset.resumeStart = allWords[minIdx].dataset.start;
@@ -438,6 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function clearVerseSelection(verseDiv) {
         if (!verseDiv) return;
+        if (selectedVerseDiv === verseDiv) selectedVerseDiv = null;
         verseDiv.querySelectorAll('.word.word-selected').forEach(w => w.classList.remove('word-selected'));
         delete verseDiv.dataset.resumeStart;
         delete verseDiv.dataset.resumeEnd;
@@ -478,6 +520,71 @@ document.addEventListener('DOMContentLoaded', () => {
     let dragJustCompleted = false;
     let dragCompletedTimer = null;
 
+    const MOUSE_DRAG_THRESHOLD = 4; // px of movement before a press becomes a drag
+    const TOUCH_DRAG_THRESHOLD = 6;
+    const LONG_PRESS_MS = 280;      // hold time that arms free-direction touch selection
+
+    // rAF-throttled drag updates: at most one selection recalculation per frame,
+    // and the latest pointer position is always applied (flushed on release).
+    let pendingDrag = null;
+    let dragRafId = 0;
+    let lastDragEndWord = null;
+
+    function applyDragUpdate(drag) {
+        const endWord = findDragTargetWord(drag.verseDiv, drag.x, drag.y);
+        if (!endWord || endWord === lastDragEndWord) return;
+        lastDragEndWord = endWord;
+        setVerseWordSelection(drag.verseDiv, drag.startWord, endWord, false);
+    }
+
+    function scheduleDragUpdate(verseDiv, startWord, x, y) {
+        pendingDrag = { verseDiv, startWord, x, y };
+        if (dragRafId) return;
+        dragRafId = requestAnimationFrame(() => {
+            dragRafId = 0;
+            const drag = pendingDrag;
+            pendingDrag = null;
+            if (drag) applyDragUpdate(drag);
+        });
+    }
+
+    function flushDragUpdate() {
+        if (dragRafId) {
+            cancelAnimationFrame(dragRafId);
+            dragRafId = 0;
+        }
+        if (pendingDrag) {
+            const drag = pendingDrag;
+            pendingDrag = null;
+            applyDragUpdate(drag);
+        }
+    }
+
+    function cancelDragUpdate() {
+        if (dragRafId) cancelAnimationFrame(dragRafId);
+        dragRafId = 0;
+        pendingDrag = null;
+        lastDragEndWord = null;
+    }
+
+    function markDragCompleted(verseDiv) {
+        dragJustCompleted = true;
+        if (dragCompletedTimer) clearTimeout(dragCompletedTimer);
+        dragCompletedTimer = setTimeout(() => {
+            dragJustCompleted = false;
+        }, 350);
+
+        const selected = getVerseWords(verseDiv).filter(w => w.classList.contains('word-selected'));
+        if (selected.length > 1) {
+            showFloatingBar(verseDiv, selected);
+        } else {
+            hideFloatingBar();
+        }
+
+        // Clear any native browser selection so our custom highlight is crisp
+        window.getSelection()?.removeAllRanges();
+    }
+
     // 1. Mouse Drag
     document.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return; // Only primary button
@@ -501,6 +608,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 mouseStartPos = { x: e.clientX, y: e.clientY };
                 isDraggingWords = false;
                 activeDragVerseDiv = verse;
+                // Block native text selection / drag-and-drop, which can swallow mousemove events mid-drag
+                e.preventDefault();
             }
         } else {
             const isFloatingBar = target.closest('#floating-selection-bar');
@@ -514,74 +623,65 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('mousemove', (e) => {
         if (!isMouseDown || !activeDragVerseDiv || !mouseStartWord) return;
 
-        const dist = Math.hypot(e.clientX - mouseStartPos.x, e.clientY - mouseStartPos.y);
-        if (dist > 5) {
+        // Button already released (e.g. mouseup happened outside the window)
+        if (e.buttons === 0) {
+            finishMouseDrag();
+            return;
+        }
+
+        if (!isDraggingWords) {
+            const dist = Math.hypot(e.clientX - mouseStartPos.x, e.clientY - mouseStartPos.y);
+            if (dist <= MOUSE_DRAG_THRESHOLD) return;
             isDraggingWords = true;
-            const elementUnderCursor = getEventElement(document.elementFromPoint(e.clientX, e.clientY));
-            let currentWord = elementUnderCursor?.closest('.word');
-            
-            // If cursor is between words or in line gap, find closest word in the verse
-            if (!currentWord && activeDragVerseDiv) {
-                const verseText = activeDragVerseDiv.querySelector('.verse-text');
-                currentWord = findClosestWordInVerse(verseText, e.clientX, e.clientY);
-            }
-
-            if (currentWord) {
-                if (currentWord.closest('[id^="verse-"]') === activeDragVerseDiv) {
-                    setVerseWordSelection(activeDragVerseDiv, mouseStartWord, currentWord, false);
-                } else {
-                    // Clamping if dragged into adjacent verse
-                    const words = Array.from(activeDragVerseDiv.querySelectorAll('.verse-text .word'));
-                    if (words.length > 0) {
-                        const curIdx = parseInt(activeDragVerseDiv.id.replace('verse-', ''));
-                        const otherVerse = currentWord.closest('[id^="verse-"]');
-                        const otherIdx = otherVerse ? parseInt(otherVerse.id.replace('verse-', '')) : -1;
-                        if (otherIdx > curIdx) {
-                            setVerseWordSelection(activeDragVerseDiv, mouseStartWord, words[words.length - 1], false);
-                        } else if (otherIdx >= 0 && otherIdx < curIdx) {
-                            setVerseWordSelection(activeDragVerseDiv, mouseStartWord, words[0], false);
-                        }
-                    }
-                }
-            }
+            lastDragEndWord = null;
+            hideFloatingBar(); // hide stale bar from a previous selection while dragging
         }
+
+        e.preventDefault();
+        scheduleDragUpdate(activeDragVerseDiv, mouseStartWord, e.clientX, e.clientY);
     });
 
-    document.addEventListener('mouseup', (e) => {
-        if (isMouseDown) {
-            if (isDraggingWords && activeDragVerseDiv) {
-                dragJustCompleted = true;
-                if (dragCompletedTimer) clearTimeout(dragCompletedTimer);
-                dragCompletedTimer = setTimeout(() => {
-                    dragJustCompleted = false;
-                }, 350);
-
-                const selected = Array.from(activeDragVerseDiv.querySelectorAll('.word.word-selected'));
-                if (selected.length > 1) {
-                    showFloatingBar(activeDragVerseDiv, selected);
-                } else if (selected.length === 1) {
-                    hideFloatingBar();
-                }
-
-                // Clear native browser blue selection so our custom highlight is crisp
-                window.getSelection()?.removeAllRanges();
-            }
-
-            isMouseDown = false;
-            isDraggingWords = false;
-            activeDragVerseDiv = null;
-            mouseStartWord = null;
+    function finishMouseDrag() {
+        if (!isMouseDown) return;
+        if (isDraggingWords && activeDragVerseDiv) {
+            flushDragUpdate(); // make sure the final pointer position is reflected
+            markDragCompleted(activeDragVerseDiv);
         }
-    });
+        cancelDragUpdate();
+
+        isMouseDown = false;
+        isDraggingWords = false;
+        activeDragVerseDiv = null;
+        mouseStartWord = null;
+    }
+
+    window.addEventListener('mouseup', finishMouseDrag);
 
     // 2. Touch Drag / Slide for Mobile & Tablets
+    //    - Horizontal swipe on a verse selects immediately (vertical swipe still scrolls the page)
+    //    - Long-press then drag selects in any direction (across lines)
     let touchStartWord = null;
     let touchStartPos = { x: 0, y: 0 };
     let isTouchDragging = false;
     let touchVerseDiv = null;
+    let touchArmed = false;
+    let touchLongPressTimer = null;
+
+    function cancelTouchSelection() {
+        if (touchLongPressTimer) clearTimeout(touchLongPressTimer);
+        touchLongPressTimer = null;
+        if (isTouchDragging) cancelDragUpdate();
+        touchStartWord = null;
+        touchVerseDiv = null;
+        isTouchDragging = false;
+        touchArmed = false;
+    }
 
     document.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) return;
+        if (e.touches.length !== 1) {
+            cancelTouchSelection();
+            return;
+        }
         const touch = e.touches[0];
         const target = getEventElement(touch.target);
         if (!target) return;
@@ -591,87 +691,71 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!word && verseText) {
             word = findClosestWordInVerse(verseText, touch.clientX, touch.clientY);
         }
+        const verse = word ? word.closest('[id^="verse-"]') : null;
+        if (!word || !verse) return;
 
-        if (word) {
-            touchStartWord = word;
-            touchStartPos = { x: touch.clientX, y: touch.clientY };
-            isTouchDragging = false;
-            touchVerseDiv = word.closest('[id^="verse-"]');
-        }
+        cancelTouchSelection();
+        touchStartWord = word;
+        touchStartPos = { x: touch.clientX, y: touch.clientY };
+        touchVerseDiv = verse;
+
+        touchLongPressTimer = setTimeout(() => {
+            touchLongPressTimer = null;
+            if (!touchStartWord || isTouchDragging) return;
+            touchArmed = true;
+            hideFloatingBar();
+            setVerseWordSelection(touchVerseDiv, touchStartWord, touchStartWord, false);
+        }, LONG_PRESS_MS);
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
         if (!touchStartWord || !touchVerseDiv) return;
-        const touch = e.touches[0];
-        const dist = Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y);
-
-        if (dist > 8) {
-            isTouchDragging = true;
-            if (e.cancelable) e.preventDefault();
-
-            const elem = getEventElement(document.elementFromPoint(touch.clientX, touch.clientY));
-            let currentWord = elem?.closest('.word');
-            if (!currentWord && touchVerseDiv) {
-                const verseText = touchVerseDiv.querySelector('.verse-text');
-                currentWord = findClosestWordInVerse(verseText, touch.clientX, touch.clientY);
-            }
-
-            if (currentWord && currentWord.closest('[id^="verse-"]') === touchVerseDiv) {
-                setVerseWordSelection(touchVerseDiv, touchStartWord, currentWord, false);
-            }
+        if (e.touches.length !== 1) {
+            cancelTouchSelection();
+            return;
         }
+        const touch = e.touches[0];
+
+        if (!isTouchDragging) {
+            if (!touchArmed) {
+                const dx = touch.clientX - touchStartPos.x;
+                const dy = touch.clientY - touchStartPos.y;
+                if (Math.hypot(dx, dy) < TOUCH_DRAG_THRESHOLD) return;
+                // Not long-pressed: mostly vertical movement means the user wants to scroll
+                if (Math.abs(dx) <= Math.abs(dy)) {
+                    cancelTouchSelection();
+                    return;
+                }
+            }
+            isTouchDragging = true;
+            if (touchLongPressTimer) {
+                clearTimeout(touchLongPressTimer);
+                touchLongPressTimer = null;
+            }
+            lastDragEndWord = null;
+            hideFloatingBar();
+        }
+
+        if (e.cancelable) e.preventDefault();
+        scheduleDragUpdate(touchVerseDiv, touchStartWord, touch.clientX, touch.clientY);
     }, { passive: false });
 
-    document.addEventListener('touchend', () => {
+    document.addEventListener('touchend', (e) => {
         if (isTouchDragging && touchVerseDiv) {
-            dragJustCompleted = true;
-            if (dragCompletedTimer) clearTimeout(dragCompletedTimer);
-            dragCompletedTimer = setTimeout(() => {
-                dragJustCompleted = false;
-            }, 350);
-
-            const selected = Array.from(touchVerseDiv.querySelectorAll('.word.word-selected'));
-            if (selected.length > 1) {
-                showFloatingBar(touchVerseDiv, selected);
-            }
-            window.getSelection()?.removeAllRanges();
+            // Suppress emulated mouse events / click after a drag
+            if (e.cancelable) e.preventDefault();
+            flushDragUpdate();
+            markDragCompleted(touchVerseDiv);
         }
+        cancelTouchSelection();
+    }, { passive: false });
 
-        touchStartWord = null;
-        touchVerseDiv = null;
-        isTouchDragging = false;
-    });
+    document.addEventListener('touchcancel', cancelTouchSelection);
 
-    // 3. Fallback for native browser text selection (keyboard Shift+Arrow, etc.)
-    document.addEventListener('selectionchange', () => {
-        if (isMouseDown || isTouchDragging) return;
-
-        const selection = window.getSelection();
-        if (selection.isCollapsed || selection.rangeCount === 0) return;
-
-        const range = selection.getRangeAt(0);
-        const container = range.commonAncestorContainer;
-        const parentEl = getEventElement(container);
-        if (!parentEl) return;
-
-        const verseDiv = parentEl.closest('[id^="verse-"]');
-        if (!verseDiv) return;
-
-        const verseText = verseDiv.querySelector('.verse-text');
-        if (!verseText) return;
-
-        const wordsInVerse = Array.from(verseText.querySelectorAll('.word'));
-        const selectedWords = wordsInVerse.filter(word => {
-            try {
-                return range.intersectsNode(word);
-            } catch (err) {
-                return selection.containsNode(word, true);
-            }
-        });
-
-        if (selectedWords.length > 0) {
-            setVerseWordSelection(verseDiv, selectedWords[0], selectedWords[selectedWords.length - 1], true);
-        }
+    // Reset any in-progress drag if the window loses focus mid-gesture
+    window.addEventListener('blur', () => {
+        finishMouseDrag();
+        cancelTouchSelection();
     });
 
     // --- Render Verses ---
@@ -681,6 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedQueue = [];
         hideFloatingBar();
         
+        selectedVerseDiv = null;
         versesContainer.innerHTML = '';
         if (globalToolbar) globalToolbar.classList.add('hidden');
         
