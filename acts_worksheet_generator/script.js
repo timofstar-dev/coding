@@ -178,6 +178,54 @@ const confusingWordsPool = [
         task: "다음 괄호 안에서 띄어쓰기가 알맞은 것을 골라보세요.",
         question: "제자들은 ( 다같이 / 다 같이 ) 모여 기도했습니다.",
         correctAnswer: "다같이"
+    },
+    {
+        title: "[웬일 / 왠일]",
+        explanation: "<strong>'웬'</strong>은 '어찌 된'이라는 뜻으로 쓰이고, <strong>'왠'</strong>은 '왜인지'의 준말인 '왠지'에만 쓰입니다.",
+        example: "이게 <strong>웬</strong> 떡이냐? / 오늘 <strong>웬일</strong>이니? / 오늘은 <strong>왠지</strong> 기분이 좋다.",
+        task: "다음 빈칸에 '웬' 또는 '왠' 중 알맞은 말을 골라 적어보세요.",
+        question: "아침 일찍 스스로 성경을 읽다니 이게 (ㅤㅤ)일이니?",
+        correctAnswer: "웬"
+    },
+    {
+        title: "[며칠 / 몇 일]",
+        explanation: "<strong>'며칠'</strong>이 항상 맞는 표준어입니다. '몇 일'이라는 표기는 우리말에 아예 없습니다.",
+        example: "오늘이 <strong>며칠</strong>이니? / <strong>며칠</strong> 동안 기도했다.",
+        task: "다음 문장에서 잘못된 부분을 찾아 바르게 고쳐 써보세요.",
+        question: "오늘이 몇 월 몇 일인지 달력을 확인해 보렴.",
+        correctAnswer: "오늘이 몇 월 며칠인지 달력을 확인해 보렴."
+    },
+    {
+        title: "[어떻게 / 어떡해]",
+        explanation: "<strong>'어떻게'</strong>는 '어떠하게'의 줄임말로 뒤에 행동이 오고, <strong>'어떡해'</strong>는 '어떻게 해'의 줄임말로 문장 끝에 홀로 쓰입니다.",
+        example: "이 일을 <strong>어떻게</strong> 할까? / 책을 잃어버렸어, 나 <strong>어떡해</strong>!",
+        task: "다음 괄호 안에서 알맞은 말을 골라보세요.",
+        question: "약속 시간에 늦었으니 이를 ( 어떻게 / 어떡해 )?",
+        correctAnswer: "어떡해"
+    },
+    {
+        title: "[백분율 / 백분률]",
+        explanation: "<strong>'-율'</strong>은 모음이나 'ㄴ' 받침 뒤에 오고, <strong>'-률'</strong>은 그 밖의 모든 받침 뒤에 옵니다.",
+        example: "백분<strong>율</strong> (ㄴ 받침) / 실패<strong>율</strong> (모음) / 출석<strong>률</strong> (ㄱ 받침) / 합격<strong>률</strong> (ㄱ 받침)",
+        task: "다음 빈칸에 '율' 또는 '률' 중 알맞은 글자를 넣어 완성하세요.",
+        question: "성경 퀴즈 대회 정답(ㅤㅤ)을 백분(ㅤㅤ)로 계산해 보았다.",
+        correctAnswer: "정답률, 백분율"
+    },
+    {
+        title: "[벌이다 / 벌리다]",
+        explanation: "<strong>'벌이다'</strong>는 잔치나 사업 등 일을 크게 시작할 때 쓰고, <strong>'벌리다'</strong>는 사이나 틈을 넓힐 때 씁니다.",
+        example: "마을 잔치를 <strong>벌이다</strong>. / 입을 크게 <strong>벌리다</strong>.",
+        task: "다음 괄호 안에서 알맞은 말을 골라보세요.",
+        question: "온 성도들이 모여 복음 축제를 ( 벌였다 / 벌렸다 ).",
+        correctAnswer: "벌였다"
+    },
+    {
+        title: "[바치다 / 받치다]",
+        explanation: "<strong>'바치다'</strong>는 귀한 것을 정성껏 드릴 때 쓰고, <strong>'받치다'</strong>는 아래에 물건을 대어 괴거나 우산을 펼쳐 들 때 씁니다.",
+        example: "하나님께 예물을 <strong>바치다</strong>. / 턱을 손으로 <strong>받치다</strong>. / 우산을 <strong>받치다</strong>.",
+        task: "다음 괄호 안에서 알맞은 말을 골라보세요.",
+        question: "온 마음과 정성을 다해 주님께 찬양을 ( 바쳤다 / 받쳤다 ).",
+        correctAnswer: "바쳤다"
     }
 ];
 
@@ -369,7 +417,17 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
             const includeSpellingEl = document.getElementById('includeSpelling');
             const includeSpelling = includeSpellingEl ? includeSpellingEl.checked : true;
             const modernBibleLabel = document.getElementById('modernBibleLabel')?.value || '현대인의성경';
-            const spellingSetType = document.getElementById('spellingSetType')?.value || 'standard';
+            const spellingSetType = document.getElementById('spellingSetType')?.value || 'random100';
+
+            // 맞춤법 문제 세트 데이터 결정 (바른AI 100선 및 표준 세트 지원)
+            let spellingData;
+            if (spellingSetType === 'standard') {
+                spellingData = seinStandardSpelling;
+            } else if (typeof getRandomBareunSpellingSet === 'function') {
+                spellingData = getRandomBareunSpellingSet(spellingSetType);
+            } else {
+                spellingData = seinStandardSpelling;
+            }
 
             state = {
                 id: Date.now(),
@@ -382,6 +440,7 @@ function generateWorksheet(isFromHistory = false, historyState = null) {
                 includeSpelling: includeSpelling,
                 modernBibleLabel: modernBibleLabel,
                 spellingSetType: spellingSetType,
+                spellingData: spellingData,
                 allVersesERV: versesERV,
                 allVersesRKV: versesRKV,
                 aiAnswers: null // AI 생성 시 채워짐
@@ -504,7 +563,19 @@ function renderSeinWorksheetHtml(state) {
     let spellingQuestionsHtml = '';
     let spellingSectionHtml = '';
     if (includeSpelling) {
-        const spSet = seinStandardSpelling.questions;
+        let spData = state.spellingData;
+        if (!spData) {
+            if (state.spellingSetType === 'standard') {
+                spData = seinStandardSpelling;
+            } else if (typeof getRandomBareunSpellingSet === 'function') {
+                spData = getRandomBareunSpellingSet(state.spellingSetType || 'random100');
+            } else {
+                spData = seinStandardSpelling;
+            }
+            state.spellingData = spData;
+        }
+
+        const spSet = spData.questions || [];
         spSet.forEach(q => {
             if (q.isSpacing) {
                 spellingQuestionsHtml += `
@@ -513,9 +584,17 @@ function renderSeinWorksheetHtml(state) {
                     </div>
                 `;
             } else {
-                // (몇 일 / 며칠) 처럼 괄호 안의 단어 중 정답에 동그라미/밑줄
-                const parts = q.text.split(new RegExp(`\\(\\s*${q.options[0]}\\s*\\/\\s*${q.options[1]}\\s*\\)`));
-                const formatted = `${parts[0]}( <span class="${q.answer === q.options[0] ? 'sein-inline-ans' : ''}">${q.options[0]}</span> / <span class="${q.answer === q.options[1] ? 'sein-inline-ans' : ''}">${q.options[1]}</span> )${parts[1] || ''}`;
+                // (선택지1 / 선택지2) 정규식으로 안전하게 분리
+                let formatted = q.text;
+                if (q.options && q.options.length >= 2) {
+                    const opt0 = q.options[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const opt1 = q.options[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`\\(\\s*${opt0}\\s*\\/\\s*${opt1}\\s*\\)`);
+                    const parts = q.text.split(regex);
+                    if (parts.length >= 2) {
+                        formatted = `${parts[0]}( <span class="${q.answer === q.options[0] ? 'sein-inline-ans' : ''}">${q.options[0]}</span> / <span class="${q.answer === q.options[1] ? 'sein-inline-ans' : ''}">${q.options[1]}</span> )${parts[1] || ''}`;
+                    }
+                }
                 spellingQuestionsHtml += `
                     <div style="margin-bottom: 6px;">
                         ${q.num}. ${formatted}
@@ -524,10 +603,24 @@ function renderSeinWorksheetHtml(state) {
             }
         });
 
+        const tipsList = (spData.tips && spData.tips.length > 0)
+            ? spData.tips
+            : seinStandardSpelling.tips;
+
         spellingSectionHtml = `
         <!-- 활동 4. 중요하거나 헷갈리는 맞춤법 찾기 -->
         <div class="sein-section">
-            <div class="sein-sec-header">활동 4. 중요하거나 헷갈리는 맞춤법 찾기</div>
+            <div class="sein-sec-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                <span>활동 4. 중요하거나 헷갈리는 맞춤법 찾기</span>
+                <span class="no-print" style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 12px; font-weight: normal; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                        출처: 바른AI 자주 틀리는 맞춤법 100선
+                    </span>
+                    <button type="button" onclick="reshuffleSpellingQuestions()" title="현재 세트 기준 다른 맞춤법 7문제로 새로고침" style="cursor: pointer; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600; color: #1e293b; display: inline-flex; align-items: center; gap: 4px;">
+                        🎲 문제 다시 섞기
+                    </button>
+                </span>
+            </div>
 
             <div style="margin-bottom: 8px; font-size: 14.5px;">
                 <strong>맞춤법 연습 문제</strong> — 알맞은 낱말에 ○표 하고 바르게 띄어 써 보세요.
@@ -539,12 +632,12 @@ function renderSeinWorksheetHtml(state) {
             <div class="sein-tip-box" style="margin-top: 14px;">
                 <strong>맞춤법 꿀팁</strong>
                 <ul style="margin: 4px 0 0 18px; padding: 0;">
-                    ${seinStandardSpelling.tips.map(t => `<li>${t}</li>`).join('')}
+                    ${tipsList.map(t => `<li>${t}</li>`).join('')}
                 </ul>
             </div>
 
             <div class="sein-teacher-key">
-                교사용 정답: ${seinStandardSpelling.answerGuide}
+                교사용 정답: ${spData.answerGuide || seinStandardSpelling.answerGuide}
             </div>
         </div>
         `;
@@ -1072,6 +1165,17 @@ function printAnswers() {
     window.print();
     wsArea.classList.remove('show-answers');
     if (mainTitle) mainTitle.textContent = "성경적 세계관 논술 활동지";
+}
+
+// 활동 4 맞춤법 문제 새로고침 (바른AI 100선 기반)
+function reshuffleSpellingQuestions() {
+    if (!currentWorksheetState) return;
+    const currentSetType = currentWorksheetState.spellingSetType || 'random100';
+    if (typeof getRandomBareunSpellingSet === 'function') {
+        currentWorksheetState.spellingData = getRandomBareunSpellingSet(currentSetType);
+        updateStoredState(currentWorksheetState);
+        renderWorksheetUI(currentWorksheetState);
+    }
 }
 
 // 히스토리 관리
