@@ -1,22 +1,30 @@
 @echo off
 chcp 65001 > nul
-echo ==============================================
-echo [사도행전 활동지 생성기] 깃허브 및 클라우드플레어 배포
-echo ==============================================
-
-cd /d "%~dp0.."
-git add .
-git status -s
-
-set /p msg="커밋 메시지 (입력 없이 엔터 누르면 '자동 업데이트'): "
-if "%msg%"=="" set msg=업데이트: 활동지 생성기 내용 수정
-
-git commit -m "%msg%"
-git push origin main
-
-echo.
-echo ==============================================
-echo 깃허브 푸시 완료! 클라우드플레어가 자동으로 배포합니다.
-echo 배포 사이트: https://bible-worksheets.pages.dev
-echo ==============================================
+setlocal
+pushd "%~dp0"
+call npm ci
+if errorlevel 1 goto failed
+call npm test
+if errorlevel 1 goto failed
+call npm run build
+if errorlevel 1 goto failed
+git status --short
+git add -- .
+if errorlevel 1 goto failed
+git diff --cached --quiet -- .
+if errorlevel 1 (
+  git commit --only . -m "활동지 생성기 업데이트"
+  if errorlevel 1 goto failed
+)
+git push origin HEAD:main
+if errorlevel 1 goto failed
+echo GitHub 업데이트 완료. Cloudflare 배포 결과를 확인해 주세요.
+echo https://bible-worksheets.pages.dev
+popd
 pause
+exit /b 0
+:failed
+echo 오류가 발생하여 배포를 중단했습니다. 위의 오류를 확인해 주세요.
+popd
+pause
+exit /b 1

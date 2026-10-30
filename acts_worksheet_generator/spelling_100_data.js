@@ -18,7 +18,7 @@ const bareunSpelling100 = [
         "id": 2,
         "category": "choice",
         "title": "'할걸'과 '할껄'",
-        "text": "말씀을 미리 암송해 둘 것을 (후회할걸 / 후회할껄) 그랬어.",
+        "text": "말씀을 미리 읽지 않으면 나중에 (후회할걸 / 후회할껄).",
         "options": [
             "후회할걸",
             "후회할껄"
@@ -1326,8 +1326,8 @@ function getRandomBareunSpellingSet(setType = 'random100') {
         const choicePool = bareunSpelling100.filter(item => item.category !== 'spacing' && !item.isSpacing);
         
         // 셔플
-        const shuffledSpacing = [...spacingPool].sort(() => Math.random() - 0.5);
-        const shuffledChoice = [...choicePool].sort(() => Math.random() - 0.5);
+        const shuffledSpacing = shuffleItems(spacingPool);
+        const shuffledChoice = shuffleItems(choicePool);
         
         const pickedSpacing = shuffledSpacing[0];
         const pickedChoices = shuffledChoice.slice(0, 6);
@@ -1363,3 +1363,5 @@ function getRandomBareunSpellingSet(setType = 'random100') {
         answerGuide: answerGuide
     };
 }
+
+function shuffleItems(items) { const result = [...items]; for (let i=result.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [result[i],result[j]]=[result[j],result[i]]; } return result; }

@@ -2,3 +2,7 @@
 *.txt
 parse_bible.py
 acts_rkv.json
+node_modules/
+dist/
+.dev.vars*
+.env*
