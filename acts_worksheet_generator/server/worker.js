@@ -125,7 +125,19 @@ export async function handleAI(request, env, dependencies = {}) {
       },
     );
     if (!upstream.ok) {
-      await upstream.body?.cancel();
+      let reasons = [];
+      try {
+        const failure = await readLimitedJSON(upstream.body, MAX_RESPONSE_BYTES);
+        reasons = (failure.error?.details || []).map((detail) => detail.reason);
+      } catch {
+        // Never expose upstream messages, which may contain request details.
+      }
+      if (reasons.includes("API_KEY_INVALID"))
+        return reply(503, "AI 키가 유효하지 않습니다. 서버의 GEMINI_API_KEY에 새 키를 등록해 주세요. (AI_KEY_INVALID)");
+      if (upstream.status === 404)
+        return reply(502, "설정된 AI 모델을 찾을 수 없습니다. 서버의 GEMINI_MODEL 설정을 확인해 주세요. (AI_HTTP_404)");
+      if (upstream.status === 400)
+        return reply(502, "Google AI가 요청을 거절했습니다. 키 또는 요청 설정 확인이 필요합니다. (AI_HTTP_400)");
       if (upstream.status === 429)
         return reply(
           429,
@@ -135,7 +147,7 @@ export async function handleAI(request, env, dependencies = {}) {
         return reply(503, "서버의 AI 키 설정을 확인해 주세요.");
       return reply(
         502,
-        "AI 서비스가 응답하지 않습니다. 잠시 후 다시 시도해 주세요.",
+        `AI 서비스가 응답하지 않습니다. 잠시 후 다시 시도해 주세요. (AI_HTTP_${upstream.status})`,
       );
     }
     const data = await readLimitedJSON(upstream.body, MAX_RESPONSE_BYTES);
