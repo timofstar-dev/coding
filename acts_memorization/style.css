@@ -104,3 +104,33 @@
     background-color: #f3f4f6; /* gray-100 */
     border-left: 4px solid #9ca3af; /* gray-400 */
 }
+
+/* Audio download dialog */
+.dl-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.dl-modal.hidden {
+    display: none;
+}
+.dl-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.45);
+}
+.dl-panel {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
+}
