@@ -824,6 +824,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <i class="fa-solid fa-repeat"></i>
                     </button>
                     
+                    <button class="download-btn bg-indigo-50 text-indigo-700 hover:bg-indigo-100 p-2 rounded-full w-10 h-10 flex items-center justify-center transition shadow-sm" title="음성 파일 다운로드 (배속 선택)">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+
                     <div class="ml-auto flex items-center gap-2">
                         <label class="text-xs text-gray-500 font-medium">Speed:</label>
                         <select class="speed-select text-sm border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 p-1">
@@ -927,6 +931,16 @@ document.addEventListener('DOMContentLoaded', () => {
             stopBtn.addEventListener('click', () => {
                 isPlayingSelected = false; // cancel global queue if stopped manually
                 stopSpeech();
+            });
+
+            const downloadBtn = verseDiv.querySelector('.download-btn');
+            downloadBtn.addEventListener('click', () => {
+                if (typeof window.openVerseDownload !== 'function') return;
+                window.openVerseDownload({
+                    reference: verseObj.reference,
+                    spokenText,
+                    defaultSpeed: speedSelect.value,
+                });
             });
 
             loopBtn.addEventListener('click', () => {
